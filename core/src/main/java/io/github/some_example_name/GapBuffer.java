@@ -1,170 +1,96 @@
 package io.github.some_example_name;
 
-import java.util.AbstractList;
-import java.util.Arrays;
-import java.util.Collection;
 
-public class GapBuffer<T> extends AbstractList<T> {
-
-    private static final int DEFAULT_SIZE = 1024;
-
-    private Object[] elementData;
-
+public class GapBuffer {
+    private static final int DEFAULT_SIZE = 10;
+    private Node[] buffer;
+    private int leftPointer;
+    private int rightPointer;
     private int size;
-
-    private int gapStart;
-
-    private int gapEnd;
-
-    private int cursor;
 
     public GapBuffer() {
         this(DEFAULT_SIZE);
     }
 
     public GapBuffer(int capacity) {
-        elementData = new Object[capacity];
-        gapStart = 0;
-        gapEnd = elementData.length - 1;
+        buffer = new Node[capacity * 2];
+        leftPointer = 0;
+        rightPointer = buffer.length - 1;
+        size = 0;
     }
 
-    public int cursorMoveRight(){
-        if(cursor == size) {
-            return cursor;
+    public int getCursor(){
+        return leftPointer;
+    }
+
+    public void addChar(char c, char decoration, int charLength) {
+        if (leftPointer >= rightPointer) {
+            expandBuffer();
         }
-        cursor++;
-        return cursor;
+        buffer[leftPointer++] = new Node(c, decoration, charLength);
+        size++;
     }
 
-    public int cursorMoveLeft(){
-        if(cursor == 0) {
-            return cursor;
-        }
-        cursor--;
-        return cursor;
-    }
-
-    public int getCursor() {
-        return cursor;
-    }
-
-    public int moveCursor(int index){
-        if(0<index && index < size) {
-            cursor = index;
-            return cursor;
-        }
-        return -1;
-    }
-
-    private int move(int index) {
-        if (index < gapStart) {
-            int count = gapStart - index;
-            System.arraycopy(elementData, index, elementData, gapEnd - count + 1, count);
-            gapStart = index;
-            gapEnd = gapEnd - count;
-            // It is okay to not set null for these elements, but for GC perspective, it
-            // is recommended to remove these invalid elements.
-            Arrays.fill(elementData, gapStart, gapEnd, null);
-        } else if (index > gapStart) {
-            int count = index - gapStart;
-            System.arraycopy(elementData, gapEnd + 1, elementData, gapStart, count);
-            gapStart = index;
-            gapEnd = gapEnd + count;
-            Arrays.fill(elementData, gapStart, gapEnd, null);
-        }
-        return gapStart;
-    }
-
-    private void ensureCapacity(int needed) {
-        int left = elementData.length - size();
-        if (left <= needed) {
-            Object[] newArray = new Object[elementData.length * 2 + needed];
-            move(size());
-            System.arraycopy(elementData, 0, newArray, 0, elementData.length);
-            elementData = newArray;
-            gapStart = gapEnd;
-            gapEnd = newArray.length - 1;
+    public void moveCursorLeft() {
+        if (leftPointer > 0) {
+            buffer[rightPointer--] = buffer[--leftPointer];
+            buffer[leftPointer] = null;
         }
     }
 
-    @Override
-    public boolean add(T t) {
-        add(size(), t);
-        return true;
-    }
-
-    @Override
-    public T set(int index, T element) {
-        T pre = null;
-        if (index < gapStart) {
-            pre = (T) elementData[index];
-            elementData[index] = element;
-        } else {
-            int id = gapEnd + index - gapStart + 1;
-            pre = (T) elementData[id];
-            elementData[id] = element;
-        }
-        return pre;
-    }
-
-    @Override
-    public void add(int index, T element) {
-        ensureCapacity(1);
-        int id = move(index);
-        elementData[id] = element;
-        gapStart ++;
-        size ++;
-    }
-
-    @Override
-    public T remove(int index) {
-        move(index);
-        T rmObj = (T) elementData[++gapEnd];
-        elementData[gapEnd] = null;
-        size --;
-        return rmObj;
-    }
-
-    /**
-     * New API in GapList which supports removing a range of elements in the list
-     * @param fromIndex
-     * @param toIndex
-     */
-    public void removeAll(int fromIndex, int toIndex) {
-        removeRange(fromIndex, toIndex);
-    }
-
-    public boolean addAll(int index, Collection<? extends T> c) {
-        ensureCapacity(c.size());
-        int id = move(index);
-        for (T t : c) {
-            elementData[id ++] = t;
-        }
-        gapStart = id;
-        size += c.size();
-        return true;
-    }
-
-    @Override
-    protected void removeRange(int fromIndex, int toIndex) {
-        move(fromIndex);
-        Arrays.fill(elementData, gapEnd+1, gapEnd + toIndex - fromIndex + 1, null);
-        gapEnd = gapEnd + toIndex - fromIndex;
-        size -= toIndex - fromIndex;
-    }
-
-    @Override
-    public T get(int index) {
-        if (index < gapStart) {
-            return (T) elementData[index];
-        } else {
-            int id = gapEnd + index - gapStart + 1;
-            return (T) elementData[id];
+    public void moveCursorRight() {
+        if (rightPointer < buffer.length - 1) {
+            buffer[leftPointer++] = buffer[++rightPointer];
+            buffer[rightPointer] = null;
         }
     }
 
-    @Override
-    public int size() {
+    public void moveCursor(int index) {
+        if (index < 0 || index > size) return;
+        while (leftPointer > index) moveCursorLeft();
+        while (leftPointer < index) moveCursorRight();
+    }
+
+    public void remove(int index) {
+        if (index < 0 || index >= size) return;
+        // Only proceed with removal if we have something to remove
+
+        // First move the cursor to the correct position
+        moveCursor(index+1);
+
+        if (leftPointer > 0) {
+            leftPointer--;
+            buffer[leftPointer] = null;
+            size--;
+        }
+
+    }
+
+    public Node getNode(int index) {
+        if (index < 0 || index >= size) return null;
+        return (index < leftPointer) ? buffer[index] : buffer[rightPointer + index - leftPointer + 1];
+    }
+
+    public int getSize() {
         return size;
+    }
+
+    private void expandBuffer() {
+        int newCapacity = buffer.length * 2;
+        Node[] newBuffer = new Node[newCapacity];
+        System.arraycopy(buffer, 0, newBuffer, 0, leftPointer);
+        System.arraycopy(buffer, rightPointer + 1, newBuffer, newCapacity - (buffer.length - rightPointer - 1), buffer.length - rightPointer - 1);
+        rightPointer = newCapacity - (buffer.length - rightPointer - 1);
+        buffer = newBuffer;
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < buffer.length; i++) {
+            if (i == leftPointer) sb.append("|");
+            sb.append(buffer[i] != null ? buffer[i].data : "_");
+        }
+        return sb.toString();
     }
 }

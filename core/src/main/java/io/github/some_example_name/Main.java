@@ -25,7 +25,7 @@ public class Main extends ApplicationAdapter {
 
     FitViewport viewport;
 
-    GapBuffer<Character> gapBuffer;
+    GapBuffer gapBuffer;
 
     int CurrentY;
     int charSpace;
@@ -47,12 +47,10 @@ public class Main extends ApplicationAdapter {
         charSpace=font.getData().getGlyph('m').width;
         space=14;
 
-        gapBuffer = new GapBuffer<Character>();
-        for(int i = 0; i < 50; i++){
-            gapBuffer.add('m');
+        gapBuffer = new GapBuffer(1024);
+        for(int i = 0; i < 49; i++){
+            gapBuffer.addChar('m', 'n', font.getData().getGlyph('m').width);
         }
-        gapBuffer.moveCursor(12);
-
     }
 
     @Override
@@ -65,9 +63,9 @@ public class Main extends ApplicationAdapter {
     }
     private void input(){
         if (Gdx.input.isKeyJustPressed(Input.Keys.RIGHT)) {
-            gapBuffer.cursorMoveRight();
+            gapBuffer.moveCursorRight();
         }else if (Gdx.input.isKeyJustPressed(Input.Keys.LEFT)) {
-            gapBuffer.cursorMoveLeft();
+            gapBuffer.moveCursorLeft();
         }else if(Gdx.input.isKeyJustPressed(Input.Keys.UP)){
                 int cursor = gapBuffer.getCursor();
                 int newIndex = (cursor*space-620)/space;
@@ -81,7 +79,6 @@ public class Main extends ApplicationAdapter {
         }else if (Gdx.input.isKeyJustPressed(Input.Keys.BACKSPACE)){
             if(gapBuffer.getCursor()>0){
                 gapBuffer.remove(gapBuffer.getCursor()-1);
-                gapBuffer.cursorMoveLeft();
             }
         }
 
@@ -93,15 +90,13 @@ public class Main extends ApplicationAdapter {
                     Gdx.input.isKeyPressed(Input.Keys.CAPS_LOCK)) {
                     letter = Character.toUpperCase(letter); // Büyük harf dönüşümü
                 }
-                gapBuffer.add(gapBuffer.getCursor(), letter);
-                gapBuffer.cursorMoveRight();
+                gapBuffer.addChar(letter, 'n', font.getData().getGlyph(letter).width);
             }
         }
         for (int key = Input.Keys.NUM_0; key <= Input.Keys.NUM_9; key++) {
             if (Gdx.input.isKeyJustPressed(key)) {
                 char number = (char) ('0' + (key - Input.Keys.NUM_0));
-                gapBuffer.add(gapBuffer.getCursor(), number);
-                gapBuffer.cursorMoveRight();
+                gapBuffer.addChar(number, 'n', font.getData().getGlyph(number).width);
             }
         }
 
@@ -121,8 +116,7 @@ public class Main extends ApplicationAdapter {
 
         for (Map.Entry<Integer, Character> entry : specialChars.entrySet()) {
             if (Gdx.input.isKeyJustPressed(entry.getKey())) {
-                gapBuffer.add(gapBuffer.getCursor(), entry.getValue());
-                gapBuffer.cursorMoveRight();
+                gapBuffer.addChar(entry.getValue(), 'n', font.getData().getGlyph(entry.getValue()).width);
             }
         }
 
@@ -140,7 +134,7 @@ public class Main extends ApplicationAdapter {
         boolean isXfull=false;
 
         batch.begin();
-        for(int i = 0; i<gapBuffer.size(); i++){
+        for(int i = 0; i<gapBuffer.getSize()-1; i++){
             if(currentX > 620){
                 isXfull=true;
             }
@@ -151,9 +145,11 @@ public class Main extends ApplicationAdapter {
             }
             currentX+=space;
             if(i == gapBuffer.getCursor()){
-                font.draw(batch, "|", currentX-font.getData().getGlyph(gapBuffer.get(i)).width-space/4, currentY);
+                font.setColor(Color.RED);
+                font.draw(batch, "|", currentX-font.getData().getGlyph(gapBuffer.getNode(i).data).width, currentY);
+                font.setColor(Color.WHITE);
             }
-            font.draw(batch, String.valueOf(gapBuffer.get(i)), currentX -font.getData().getGlyph(gapBuffer.get(i)).width, currentY);
+            font.draw(batch, String.valueOf(gapBuffer.getNode(i).data), currentX -font.getData().getGlyph(gapBuffer.getNode(i).data).width, currentY);
         }
         batch.end();
 
