@@ -28,7 +28,6 @@ public class Main extends ApplicationAdapter {
     GapBuffer gapBuffer;
 
     int CurrentY;
-    int charSpace;
     int space;
 
     @Override
@@ -44,13 +43,13 @@ public class Main extends ApplicationAdapter {
 
         viewport = new FitViewport(8, 5);
         CurrentY=460;
-        charSpace=font.getData().getGlyph('m').width;
-        space=14;
+        space = 1;
 
         gapBuffer = new GapBuffer(1024);
         for(int i = 0; i < 49; i++){
             gapBuffer.addChar('m', 'n', font.getData().getGlyph('m').width);
         }
+
     }
 
     @Override
@@ -67,28 +66,42 @@ public class Main extends ApplicationAdapter {
         }else if (Gdx.input.isKeyJustPressed(Input.Keys.LEFT)) {
             gapBuffer.moveCursorLeft();
         }else if(Gdx.input.isKeyJustPressed(Input.Keys.UP)){
-                int cursor = gapBuffer.getCursor();
-                int newIndex = (cursor*space-620)/space;
-                gapBuffer.moveCursor(newIndex);
+            int cursor = gapBuffer.getCursor();
+            int sum=0;
+            for(int i = cursor; i >= 0; i--) {
+                sum+=space + gapBuffer.getNode(i).getCharLength();
+                if(sum>=620 || gapBuffer.getNode(i).getChar() == '\n'){
+                    gapBuffer.moveCursor(i);
+                    break;
+                }
+            }
 
         }else if (Gdx.input.isKeyJustPressed(Input.Keys.DOWN)){
             int cursor = gapBuffer.getCursor();
-            int newIndex = (cursor*space+620)/space;
-            gapBuffer.moveCursor(newIndex+1);
+            int sum=0;
+            for(int i = cursor; i < gapBuffer.getSize(); i++) {
+                sum+=space + gapBuffer.getNode(i).getCharLength();
+                if(sum>=620 || gapBuffer.getNode(i).getChar() == '\n'){
+                    gapBuffer.moveCursor(i);
+                    break;
+                }
+            }
 
         }else if (Gdx.input.isKeyJustPressed(Input.Keys.BACKSPACE)){
             if(gapBuffer.getCursor()>0){
                 gapBuffer.remove(gapBuffer.getCursor()-1);
             }
+        }else if (Gdx.input.isKeyJustPressed(Input.Keys.ENTER)){
+            gapBuffer.addChar('\n', 'n',0);
         }
 
         for (int key = Input.Keys.A; key <= Input.Keys.Z; key++) {
             if (Gdx.input.isKeyJustPressed(key)) {
-                char letter = (char) ('a' + (key - Input.Keys.A)); // Küçük harf dönüşümü
+                char letter = (char) ('a' + (key - Input.Keys.A));
                 if (Gdx.input.isKeyPressed(Input.Keys.SHIFT_LEFT) ||
                     Gdx.input.isKeyPressed(Input.Keys.SHIFT_RIGHT) ||
                     Gdx.input.isKeyPressed(Input.Keys.CAPS_LOCK)) {
-                    letter = Character.toUpperCase(letter); // Büyük harf dönüşümü
+                    letter = Character.toUpperCase(letter);
                 }
                 gapBuffer.addChar(letter, 'n', font.getData().getGlyph(letter).width);
             }
@@ -130,26 +143,34 @@ public class Main extends ApplicationAdapter {
 
         int currentY=460;
         CurrentY=currentY;
-        int currentX=0;
+        int currentX=10;
         boolean isXfull=false;
 
         batch.begin();
-        for(int i = 0; i<gapBuffer.getSize()-1; i++){
+        for(int i = 0; i<gapBuffer.getSize(); i++){
             if(currentX > 620){
                 isXfull=true;
             }
             if (isXfull) {
                 currentY -= 20;
                 isXfull = false;
-                currentX = 0;
+                currentX = 10;
             }
-            currentX+=space;
+
+            Node currNode = gapBuffer.getNode(i);
+
             if(i == gapBuffer.getCursor()){
                 font.setColor(Color.RED);
-                font.draw(batch, "|", currentX-font.getData().getGlyph(gapBuffer.getNode(i).data).width, currentY);
+                font.draw(batch, "|", currentX - space, currentY);
                 font.setColor(Color.WHITE);
             }
-            font.draw(batch, String.valueOf(gapBuffer.getNode(i).data), currentX -font.getData().getGlyph(gapBuffer.getNode(i).data).width, currentY);
+            if(currNode.getChar() == '\n'){
+                currentY -= 20;
+                currentX = 10;
+            }
+            font.draw(batch, String.valueOf(currNode.getChar()), currentX, currentY);
+
+            currentX += currNode.getCharLength() + space;
         }
         batch.end();
 

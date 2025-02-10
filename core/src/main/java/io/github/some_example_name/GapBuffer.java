@@ -89,7 +89,7 @@ public class GapBuffer {
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < buffer.length; i++) {
             if (i == leftPointer) sb.append("|");
-            sb.append(buffer[i] != null ? buffer[i].data : "_");
+            sb.append(buffer[i] != null ? buffer[i].getChar() : "_");
         }
         return sb.toString();
     }
