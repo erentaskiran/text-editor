@@ -68,22 +68,31 @@ public class Main extends ApplicationAdapter {
         }else if(Gdx.input.isKeyJustPressed(Input.Keys.UP)){
             int cursor = gapBuffer.getCursor();
             int sum=0;
-            for(int i = cursor; i >= 0; i--) {
-                sum+=space + gapBuffer.getNode(i).getCharLength();
-                if(sum>=620 || gapBuffer.getNode(i).getChar() == '\n'){
-                    gapBuffer.moveCursor(i);
-                    break;
+            if(gapBuffer.getNode(cursor).getChar()=='\n' && cursor>0){
+                gapBuffer.moveCursorLeft();
+            }else{
+                for(int i = cursor; i >= 0; i--) {
+                    sum+=space + gapBuffer.getNode(i).getCharLength();
+                    if(sum>=620 || gapBuffer.getNode(i).getChar() == '\n'){
+                        gapBuffer.moveCursor(i);
+                        break;
+                    }
                 }
             }
 
         }else if (Gdx.input.isKeyJustPressed(Input.Keys.DOWN)){
             int cursor = gapBuffer.getCursor();
             int sum=0;
-            for(int i = cursor; i < gapBuffer.getSize(); i++) {
-                sum+=space + gapBuffer.getNode(i).getCharLength();
-                if(sum>=620 || gapBuffer.getNode(i).getChar() == '\n'){
-                    gapBuffer.moveCursor(i);
-                    break;
+            if(gapBuffer.getNode(cursor).getChar()=='\n' && cursor>0){
+                gapBuffer.moveCursorRight();
+            }else {
+
+                for (int i = cursor; i < gapBuffer.getSize(); i++) {
+                    sum += space + gapBuffer.getNode(i).getCharLength();
+                    if (sum >= 620 || gapBuffer.getNode(i).getChar() == '\n') {
+                        gapBuffer.moveCursor(i);
+                        break;
+                    }
                 }
             }
 
@@ -139,7 +148,7 @@ public class Main extends ApplicationAdapter {
     }
 
     private void draw(){
-        ScreenUtils.clear(0.15f, 0.15f, 0.2f, 1f);
+        ScreenUtils.clear(0.f, 0.f, 0f, 0f);
 
         int currentY=460;
         CurrentY=currentY;
