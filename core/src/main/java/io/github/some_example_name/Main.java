@@ -9,6 +9,7 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator;
+import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 
@@ -22,6 +23,8 @@ public class Main extends ApplicationAdapter {
     private FreeTypeFontGenerator fontGenerator;
     private FreeTypeFontGenerator.FreeTypeFontParameter fontParameter;
     private BitmapFont font;
+
+    Vector2 touchPos;
 
     FitViewport viewport;
 
@@ -40,6 +43,8 @@ public class Main extends ApplicationAdapter {
         fontParameter.size = 12;
         fontParameter.color = Color.WHITE;
         font = fontGenerator.generateFont(fontParameter);
+
+        touchPos = new Vector2();
 
         viewport = new FitViewport(8, 5);
         CurrentY=460;
@@ -142,6 +147,25 @@ public class Main extends ApplicationAdapter {
             }
         }
 
+        if (Gdx.input.isTouched()) {
+            float x =Gdx.input.getX();
+            float y = 480-Gdx.input.getY();
+            viewport.unproject(touchPos);
+            int sumX = 10;
+            int sumY = 440;
+            System.out.println(x + " " + y + " " + sumX + " " + sumY);
+            for(int i = 0; i<gapBuffer.getSize(); i++){
+                sumX+=gapBuffer.getNode(i).getCharLength() + space;
+                if(sumX >=620 || gapBuffer.getNode(i).getChar() == '\n'){
+                    sumY-=20;
+                    sumX=10;
+                }
+
+                if (Math.abs(sumX-x)<20 && Math.abs(sumY-y)<20){
+                    gapBuffer.moveCursor(i);
+                }
+            }
+        }
     }
 
     private void logic(){
