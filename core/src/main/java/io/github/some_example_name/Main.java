@@ -1,14 +1,13 @@
 package io.github.some_example_name;
 
-import com.badlogic.gdx.ApplicationAdapter;
-import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.Input;
+import com.badlogic.gdx.*;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator;
+import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.utils.viewport.FitViewport;
@@ -17,12 +16,15 @@ import java.util.HashMap;
 import java.util.Map;
 
 /** {@link com.badlogic.gdx.ApplicationListener} implementation shared by all platforms. */
-public class Main extends ApplicationAdapter {
+public class Main extends ApplicationAdapter implements InputProcessor {
     private SpriteBatch batch;
 
     private FreeTypeFontGenerator fontGenerator;
     private FreeTypeFontGenerator.FreeTypeFontParameter fontParameter;
     private BitmapFont font;
+    ShapeRenderer shapeRenderer;
+
+    boolean selecting;
 
     Vector2 touchPos;
 
@@ -32,6 +34,10 @@ public class Main extends ApplicationAdapter {
 
     int CurrentY;
     int space;
+    int startX;
+    int startY;
+    int endX;
+    int endY;
 
     @Override
     public void create() {
@@ -45,10 +51,18 @@ public class Main extends ApplicationAdapter {
         font = fontGenerator.generateFont(fontParameter);
 
         touchPos = new Vector2();
+        Gdx.input.setInputProcessor(Main.this);
+
+        shapeRenderer = new ShapeRenderer();
+        selecting = false;
 
         viewport = new FitViewport(8, 5);
         CurrentY=460;
         space = 1;
+        startX = 0;
+        startY = 0;
+        endX = 0;
+        endY = 0;
 
         gapBuffer = new GapBuffer(1024);
         for(int i = 0; i < 49; i++){
@@ -153,7 +167,6 @@ public class Main extends ApplicationAdapter {
             viewport.unproject(touchPos);
             int sumX = 10;
             int sumY = 440;
-            System.out.println(x + " " + y + " " + sumX + " " + sumY);
             for(int i = 0; i<gapBuffer.getSize(); i++){
                 sumX+=gapBuffer.getNode(i).getCharLength() + space;
                 if(sumX >=620 || gapBuffer.getNode(i).getChar() == '\n'){
@@ -173,19 +186,31 @@ public class Main extends ApplicationAdapter {
 
     private void draw(){
         ScreenUtils.clear(0.f, 0.f, 0f, 0f);
+        CurrentY=460;
 
-        int currentY=460;
-        CurrentY=currentY;
         int currentX=10;
         boolean isXfull=false;
+        batch.begin();
+        if (!selecting) {
+            shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+            shapeRenderer.setColor(0, 0, 1, 0.5f);
+            float highlightX = Math.min(startX, endX);
+            float highlightWidth = Math.abs(startX - endX);
+            shapeRenderer.rect(highlightX, CurrentY - 20, highlightWidth, 20);
+            shapeRenderer.end();
+        }
+        batch.end();
 
         batch.begin();
+
+
+
         for(int i = 0; i<gapBuffer.getSize(); i++){
             if(currentX > 620){
                 isXfull=true;
             }
             if (isXfull) {
-                currentY -= 20;
+                CurrentY -= 20;
                 isXfull = false;
                 currentX = 10;
             }
@@ -194,17 +219,23 @@ public class Main extends ApplicationAdapter {
 
             if(i == gapBuffer.getCursor()){
                 font.setColor(Color.RED);
-                font.draw(batch, "|", currentX - space, currentY);
+                font.draw(batch, "|", currentX - space, CurrentY);
                 font.setColor(Color.WHITE);
             }
             if(currNode.getChar() == '\n'){
-                currentY -= 20;
+                CurrentY -= 20;
                 currentX = 10;
             }
-            font.draw(batch, String.valueOf(currNode.getChar()), currentX, currentY);
+            font.draw(batch, String.valueOf(currNode.getChar()), currentX, CurrentY);
 
             currentX += currNode.getCharLength() + space;
         }
+        if(gapBuffer.getSize()== gapBuffer.getCursor()){
+            font.setColor(Color.RED);
+            font.draw(batch, "|", currentX - space, CurrentY);
+            font.setColor(Color.WHITE);
+        }
+
         batch.end();
 
     }
@@ -213,4 +244,51 @@ public class Main extends ApplicationAdapter {
     public void dispose() {
         batch.dispose();
     }
+
+    @Override
+    public boolean touchDown(int screenX, int screenY, int pointer, int button) {
+        startX = screenX;
+        startY = 480-screenY;
+        selecting = true;
+        return true;
+    }
+
+    @Override
+    public boolean touchUp(int screenX, int screenY, int pointer, int button) {
+        endX = screenX;
+        endY = 480-screenY;
+        selecting = false;
+        System.out.println("Selection from (" + startX + ", " + startY + ") to (" + endX + ", " + endY + ")");
+        return true;
+    }
+
+    public int getStartX() {
+        return startX;
+    }
+    public int getStartY() {
+        return startY;
+    }
+    public int getEndX() {
+        return endX;
+    }
+    public int getEndY() {
+        return endY;
+    }
+
+    @Override
+    public boolean touchCancelled(int screenX, int screenY, int pointer, int button) {
+        return false;
+    }
+
+    @Override public boolean touchDragged(int screenX, int screenY, int pointer) { return false; }
+
+    @Override
+    public boolean mouseMoved(int screenX, int screenY) {
+        return false;
+    }
+
+    @Override public boolean keyDown(int keycode) { return false; }
+    @Override public boolean keyUp(int keycode) { return false; }
+    @Override public boolean keyTyped(char character) { return false; }
+    @Override public boolean scrolled(float amountX, float amountY) { return false; }
 }
