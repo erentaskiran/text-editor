@@ -1,33 +1,76 @@
-# FirstGame
+# Text Editor Implementation
 
-A [libGDX](https://libgdx.com/) project generated with [gdx-liftoff](https://github.com/libgdx/gdx-liftoff).
+A text editor implementation using [libGDX](https://libgdx.com/), a powerful Java game development framework. This project demonstrates the implementation of a basic text editor with a gap buffer data structure for efficient text manipulation.
 
-This project was generated with a template including simple application launchers and an `ApplicationAdapter` extension that draws libGDX logo.
+## Features
+
+- Basic text editing capabilities
+- Cursor navigation using arrow keys
+- Text selection support with mouse interaction
+- Multi-line text selection and manipulation
+- Gap buffer implementation for efficient text insertion and deletion
+- Support for special characters and numbers
+- Multi-line text editing with line tracking
+- Real-time text rendering with proper spacing
+- Font customization with FreeType font support
+
+## Implementation Details
+
+The project uses the following key components:
+
+- `TextEditor`: Main editor component handling text rendering, input processing, and UI management
+- `GapBuffer`: Custom implementation of a gap buffer data structure for efficient text manipulation
+- `Node`: Data structure for storing individual characters and their properties
+- `Main`: Application entry point and lifecycle management
+
+The editor is built with a clean architecture that separates concerns:
+- Text manipulation logic is handled by the gap buffer
+- UI and input handling is managed by the text editor component
+- Application lifecycle is managed by the main class
+
+## Controls
+
+- **Arrow Keys**: Navigate the cursor
+- **Backspace**: Delete characters
+- **Enter**: New line
+- **Mouse**: 
+  - Click to position cursor
+  - Click and drag to select text
+- **Regular Keys**: Type text (supports uppercase with Shift/Caps Lock)
+- **Special Characters**: Supports period, comma, space, and other common symbols
 
 ## Platforms
 
 - `core`: Main module with the application logic shared by all platforms.
-- `lwjgl3`: Primary desktop platform using LWJGL3; was called 'desktop' in older docs.
+- `lwjgl3`: Primary desktop platform using LWJGL3.
 
-## Gradle
+## Building and Running
 
-This project uses [Gradle](https://gradle.org/) to manage dependencies.
-The Gradle wrapper was included, so you can run Gradle tasks using `gradlew.bat` or `./gradlew` commands.
-Useful Gradle tasks and flags:
+This project uses [Gradle](https://gradle.org/) to manage dependencies. You can run the project using the following commands:
 
-- `--continue`: when using this flag, errors will not stop the tasks from running.
-- `--daemon`: thanks to this flag, Gradle daemon will be used to run chosen tasks.
-- `--offline`: when using this flag, cached dependency archives will be used.
-- `--refresh-dependencies`: this flag forces validation of all dependencies. Useful for snapshot versions.
-- `build`: builds sources and archives of every project.
-- `cleanEclipse`: removes Eclipse project data.
-- `cleanIdea`: removes IntelliJ project data.
-- `clean`: removes `build` folders, which store compiled classes and built archives.
-- `eclipse`: generates Eclipse project data.
-- `idea`: generates IntelliJ project data.
-- `lwjgl3:jar`: builds application's runnable jar, which can be found at `lwjgl3/build/libs`.
-- `lwjgl3:run`: starts the application.
-- `test`: runs unit tests (if any).
+```bash
+# Run the application
+./gradlew lwjgl3:run
 
-Note that most tasks that are not specific to a single project can be run with `name:` prefix, where the `name` should be replaced with the ID of a specific project.
-For example, `core:clean` removes `build` folder only from the `core` project.
+# Build a runnable JAR
+./gradlew lwjgl3:jar
+```
+
+The built JAR can be found at `lwjgl3/build/libs`.
+
+## Development
+
+### Gradle Tasks
+
+- `build`: Builds sources and archives of every project.
+- `clean`: Removes `build` folders.
+- `test`: Runs unit tests (if any).
+- `lwjgl3:run`: Starts the application.
+
+For project-specific tasks, use the `[project]:` prefix (e.g., `core:clean`).
+
+## Requirements
+
+- Java 8 or higher
+- Gradle (included wrapper)
+- FreeType font support (included in dependencies)
