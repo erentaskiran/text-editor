@@ -7,6 +7,8 @@ public class GapBuffer {
     private int leftPointer;
     private int rightPointer;
     private int size;
+    private int totalWidth;
+    private int space=1;
 
     public GapBuffer() {
         this(DEFAULT_SIZE);
@@ -29,6 +31,7 @@ public class GapBuffer {
         }
         buffer[leftPointer++] = new Node(c, decoration, charLength);
         size++;
+        totalWidth += charLength + space;
     }
 
     public void moveCursorLeft() {
@@ -59,6 +62,7 @@ public class GapBuffer {
         moveCursor(index+1);
 
         if (leftPointer > 0) {
+            totalWidth -= space + getNode(index).getCharLength();
             leftPointer--;
             buffer[leftPointer] = null;
             size--;
@@ -82,6 +86,10 @@ public class GapBuffer {
         System.arraycopy(buffer, rightPointer + 1, newBuffer, newCapacity - (buffer.length - rightPointer - 1), buffer.length - rightPointer - 1);
         rightPointer = newCapacity - (buffer.length - rightPointer - 1);
         buffer = newBuffer;
+    }
+
+    public int getTotalWidth() {
+        return totalWidth;
     }
 
     @Override
