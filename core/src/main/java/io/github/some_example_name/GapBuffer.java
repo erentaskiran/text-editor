@@ -9,7 +9,6 @@ public class GapBuffer {
     private int size;
     private int totalWidth;
     private int space=1;
-
     public GapBuffer() {
         this(DEFAULT_SIZE);
     }
@@ -56,9 +55,7 @@ public class GapBuffer {
 
     public void remove(int index) {
         if (index < 0 || index >= size) return;
-        // Only proceed with removal if we have something to remove
 
-        // First move the cursor to the correct position
         moveCursor(index+1);
 
         if (leftPointer > 0) {
@@ -91,6 +88,7 @@ public class GapBuffer {
     public int getTotalWidth() {
         return totalWidth;
     }
+
 
     @Override
     public String toString() {
