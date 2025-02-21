@@ -39,16 +39,21 @@ public class TextEditor implements InputProcessor {
     int startY;
     int endX;
     int endY;
-    ArrayList<Integer> selectedLines;
+    int selectedStartIndex;
+    int selectedEndIndex;
     HashSet<Integer> currentLines;
+    int colSize;
+    int rowSize;
+    int CursorX;
+    int CursorY;
 
     public TextEditor(SpriteBatch batch) {
         this.batch = batch;
-        fontGenerator = new FreeTypeFontGenerator(Gdx.files.internal("Arial.ttf"));
+        fontGenerator = new FreeTypeFontGenerator(Gdx.files.internal("HackNerdFontMono-Regular.ttf"));
         fontParameter = new FreeTypeFontGenerator.FreeTypeFontParameter();
         fontParameter.borderWidth = 0.1f;
         fontParameter.borderColor = Color.BLACK;
-        fontParameter.size = 12;
+        fontParameter.size = 20;
         fontParameter.color = Color.WHITE;
         font = fontGenerator.generateFont(fontParameter);
 
@@ -56,7 +61,6 @@ public class TextEditor implements InputProcessor {
 
         shapeRenderer = new ShapeRenderer();
         selecting = false;
-        selectedLines = new ArrayList<>();
 
         viewport = new FitViewport(8, 5);
         CurrentY=460;
@@ -65,6 +69,14 @@ public class TextEditor implements InputProcessor {
         startY = 0;
         endX = 0;
         endY = 0;
+        selectedEndIndex = -1;
+        selectedStartIndex = -1;
+
+        CursorX=10;
+        CursorY=460;
+
+        colSize = font.getData().getGlyph('m').width+1;
+        rowSize = font.getData().getGlyph('m').height+colSize;
 
         gapBuffer = new GapBuffer(1024);
         for(int i = 0; i < 49; i++){
@@ -77,52 +89,124 @@ public class TextEditor implements InputProcessor {
 
     public void input(){
         boolean isAnyKeyPressed = false;
-        if (Gdx.input.isKeyJustPressed(Input.Keys.RIGHT)) {
-            gapBuffer.moveCursorRight();
-            isAnyKeyPressed = true;
-        }else if (Gdx.input.isKeyJustPressed(Input.Keys.LEFT)) {
-            gapBuffer.moveCursorLeft();
-            isAnyKeyPressed = true;
-        }else if(Gdx.input.isKeyJustPressed(Input.Keys.UP)){
-            int cursor = gapBuffer.getCursor();
-            int sum=0;
-            if(gapBuffer.getNode(cursor).getChar()=='\n' && cursor>0){
-                gapBuffer.moveCursorLeft();
-            }else{
-                for(int i = cursor; i >= 0; i--) {
-                    sum+=space + gapBuffer.getNode(i).getCharLength();
-                    if(sum>=620 || gapBuffer.getNode(i).getChar() == '\n'){
-                        gapBuffer.moveCursor(i);
-                        break;
-                    }
-                }
-            }
-            isAnyKeyPressed = true;
 
-        }else if (Gdx.input.isKeyJustPressed(Input.Keys.DOWN)){
-            int cursor = gapBuffer.getCursor();
-            int sum=0;
-            if(gapBuffer.getNode(cursor).getChar()=='\n' && cursor>0){
+        if (Gdx.input.isKeyPressed(Input.Keys.SHIFT_LEFT) || Gdx.input.isKeyPressed(Input.Keys.SHIFT_RIGHT)){
+            if(gapBuffer.getCursor() < 0 || gapBuffer.getCursor() >= gapBuffer.getSize()){
+                return;
+            }
+            if (Gdx.input.isKeyJustPressed(Input.Keys.RIGHT) && (Gdx.input.isKeyPressed(Input.Keys.SHIFT_LEFT) || Gdx.input.isKeyPressed(Input.Keys.SHIFT_RIGHT))) {
                 gapBuffer.moveCursorRight();
-            }else {
 
-                for (int i = cursor; i < gapBuffer.getSize(); i++) {
-                    sum += space + gapBuffer.getNode(i).getCharLength();
-                    if (sum >= 620 || gapBuffer.getNode(i).getChar() == '\n') {
-                        gapBuffer.moveCursor(i);
-                        break;
+                if (selectedStartIndex<0){
+                    selectedStartIndex = gapBuffer.getCursor();
+                }
+                selectedEndIndex = gapBuffer.getCursor();
+                selecting=false;
+            }else if (Gdx.input.isKeyJustPressed(Input.Keys.LEFT)&& (Gdx.input.isKeyPressed(Input.Keys.SHIFT_LEFT) || Gdx.input.isKeyPressed(Input.Keys.SHIFT_RIGHT))) {
+                if (selectedEndIndex<0){
+                    selectedEndIndex = gapBuffer.getCursor();
+                }
+                selectedStartIndex = gapBuffer.getCursor();
+                gapBuffer.moveCursorLeft();
+
+                selecting=false;
+            }else if(Gdx.input.isKeyJustPressed(Input.Keys.UP)&& (Gdx.input.isKeyPressed(Input.Keys.SHIFT_LEFT) || Gdx.input.isKeyPressed(Input.Keys.SHIFT_RIGHT))){
+                int cursor = gapBuffer.getCursor();
+                int sum=0;
+                int tmp = -1;
+
+                if(cursor < gapBuffer.getSize() && cursor >= 0) {
+                    if (selectedEndIndex < 0) {
+                        tmp = gapBuffer.getCursor();
+                    }
+                    for (int i = cursor; i >= 0; i--) {
+                        sum += colSize;
+                        if (sum >= 620 || gapBuffer.getNode(i).getChar() == '\n') {
+                            gapBuffer.moveCursor(i);
+                            selectedStartIndex = gapBuffer.getCursor();
+                            selectedEndIndex = tmp;
+                            break;
+                        }
                     }
                 }
+                selecting=false;
+            }else if (Gdx.input.isKeyJustPressed(Input.Keys.DOWN)&& (Gdx.input.isKeyPressed(Input.Keys.SHIFT_LEFT) || Gdx.input.isKeyPressed(Input.Keys.SHIFT_RIGHT))){
+                int cursor = gapBuffer.getCursor();
+                int sum=0;
+                int tmp = -1;
+                if(cursor < gapBuffer.getSize() && cursor >= 0) {
+                    if (selectedStartIndex < 0) {
+                        tmp = gapBuffer.getCursor();
+                    }
+                    for (int i = cursor; i < gapBuffer.getSize(); i++) {
+                        sum += colSize;
+                        if (sum >= 620 || gapBuffer.getNode(i).getChar() == '\n') {
+                            gapBuffer.moveCursor(i);
+                            selectedEndIndex = gapBuffer.getCursor();
+                            selectedStartIndex = tmp;
+                            break;
+                        }
+                    }
+                }
+                selecting = false;
             }
-            isAnyKeyPressed = true;
 
-        }else if (Gdx.input.isKeyJustPressed(Input.Keys.BACKSPACE)){
-            if(gapBuffer.getCursor()>0){
-                gapBuffer.remove(gapBuffer.getCursor()-1);
+        }else {
+            if (Gdx.input.isKeyJustPressed(Input.Keys.RIGHT)) {
+                gapBuffer.moveCursorRight();
+                isAnyKeyPressed = true;
+            } else if (Gdx.input.isKeyJustPressed(Input.Keys.LEFT)) {
+                gapBuffer.moveCursorLeft();
+                isAnyKeyPressed = true;
+            } else if (Gdx.input.isKeyJustPressed(Input.Keys.UP)) {
+                int cursor = gapBuffer.getCursor();
+                int sum = 0;
+                if(cursor < gapBuffer.getSize() && cursor >= 0) {
+                    if (gapBuffer.getNode(cursor).getChar() == '\n' && cursor > 0) {
+                        gapBuffer.moveCursorLeft();
+                    } else {
+                        for (int i = cursor; i >= 0; i--) {
+                            sum += colSize;
+                            if (sum >= 620 || gapBuffer.getNode(i).getChar() == '\n') {
+                                gapBuffer.moveCursor(i);
+                                break;
+                            }
+                        }
+                    }
+                    isAnyKeyPressed = true;
+                }
+
+            } else if (Gdx.input.isKeyJustPressed(Input.Keys.DOWN)) {
+                int cursor = gapBuffer.getCursor();
+                int sum = 0;
+                if(cursor < gapBuffer.getSize() && cursor >= 0) {
+                    if (gapBuffer.getNode(cursor).getChar() == '\n' && cursor > 0) {
+                        gapBuffer.moveCursorRight();
+                    } else {
+                        for (int i = cursor; i < gapBuffer.getSize(); i++) {
+                            sum += colSize;
+                            if (sum >= 620 || gapBuffer.getNode(i).getChar() == '\n') {
+                                gapBuffer.moveCursor(i);
+                                break;
+                            }
+                        }
+                    }
+                }
+                isAnyKeyPressed = true;
+
+            } else if (Gdx.input.isKeyJustPressed(Input.Keys.BACKSPACE)) {
+                if(selectedStartIndex != -1 && selectedEndIndex != -1) {
+                    deleteSelecteds();
+                }else{
+                    if (gapBuffer.getCursor() > 0) {
+                        gapBuffer.remove(gapBuffer.getCursor() - 1);
+                    }
+                }
+                isAnyKeyPressed = true;
+            } else if (Gdx.input.isKeyJustPressed(Input.Keys.ENTER)) {
+                deleteSelecteds();
+                gapBuffer.addChar('\n', 'n', 0);
             }
-            isAnyKeyPressed = true;
-        }else if (Gdx.input.isKeyJustPressed(Input.Keys.ENTER)){
-            gapBuffer.addChar('\n', 'n',0);
         }
 
         for (int key = Input.Keys.A; key <= Input.Keys.Z; key++) {
@@ -134,6 +218,7 @@ public class TextEditor implements InputProcessor {
                     letter = Character.toUpperCase(letter);
                 }
                 gapBuffer.addChar(letter, 'n', font.getData().getGlyph(letter).width);
+                deleteSelecteds();
                 isAnyKeyPressed = true;
             }
         }
@@ -141,6 +226,7 @@ public class TextEditor implements InputProcessor {
             if (Gdx.input.isKeyJustPressed(key)) {
                 char number = (char) ('0' + (key - Input.Keys.NUM_0));
                 gapBuffer.addChar(number, 'n', font.getData().getGlyph(number).width);
+                deleteSelecteds();
                 isAnyKeyPressed = true;
             }
         }
@@ -162,6 +248,7 @@ public class TextEditor implements InputProcessor {
         for (Map.Entry<Integer, Character> entry : specialChars.entrySet()) {
             if (Gdx.input.isKeyJustPressed(entry.getKey())) {
                 gapBuffer.addChar(entry.getValue(), 'n', font.getData().getGlyph(entry.getValue()).width);
+                deleteSelecteds();
                 isAnyKeyPressed = true;
             }
         }
@@ -185,23 +272,9 @@ public class TextEditor implements InputProcessor {
             }
             isAnyKeyPressed = true;
         }
-        updateCurrentLines();
-        if(isAnyKeyPressed){
-            selectedLines.clear();
-        }
-    }
-
-    private void updateCurrentLines(){
-        currentLines.clear();
-        int sumX = 10;
-        int sumY = 460;
-        for(int i = 0; i<gapBuffer.getSize(); i++){
-            sumX+=gapBuffer.getNode(i).getCharLength() + space;
-            if(sumX >=620 || gapBuffer.getNode(i).getChar() == '\n'){
-                sumY-=20;
-                sumX=10;
-            }
-            currentLines.add(sumY);
+        if (isAnyKeyPressed){
+            selectedStartIndex = -1;
+            selectedEndIndex = -1;
         }
     }
 
@@ -210,32 +283,27 @@ public class TextEditor implements InputProcessor {
         CurrentY=460;
 
         int currentX=10;
-        boolean isXfull=false;
         batch.begin();
         if (!selecting) {
             shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
-            int lenSelectedLines = selectedLines.size();
-            if(lenSelectedLines==0){
-                shapeRenderer.setColor(0, 0, 0, 0f);
-            }else{
-                shapeRenderer.setColor(0, 0, 1, 0.5f);
-            }
-            if(lenSelectedLines>1){
-                if(currentLines.contains(selectedLines.get(0))){
-                shapeRenderer.rect(startX,  selectedLines.get(0)-20, 620, 20);
-                }
-                for(int i = 1; i<lenSelectedLines-1; i++){
-                    if(currentLines.contains(selectedLines.get(i))){
-                        shapeRenderer.rect(10,  selectedLines.get(i) -20, 620, 20);
+            shapeRenderer.setColor(0, 0, 1, 0.5f);
+
+            if(selectedStartIndex != -1 && selectedEndIndex != -1) {
+                int y = 440;
+                int tmp = selectedStartIndex * colSize;
+                int x = tmp%620-3;
+                for (int i = selectedStartIndex; i <= selectedEndIndex; i++) {
+                    while (tmp >= 620) {
+                        y -= rowSize;
+                        tmp -= 620;
                     }
+                    if(x>=620){
+                        x=10;
+                    }
+                    shapeRenderer.rect(x, y, colSize, rowSize);
+                    tmp += colSize;
+                    x+=colSize;
                 }
-                if(currentLines.contains(selectedLines.get(lenSelectedLines-1))){
-                    shapeRenderer.rect(10,  selectedLines.get(lenSelectedLines-1)-20, endX, 20);
-                }
-            }else{
-                float highlightX = Math.min(startX, endX);
-                float highlightWidth = Math.abs(startX - endX);
-                shapeRenderer.rect(highlightX, CurrentY - 20, highlightWidth, 20);
             }
 
             shapeRenderer.end();
@@ -244,32 +312,28 @@ public class TextEditor implements InputProcessor {
 
         batch.begin();
 
-
-
         for(int i = 0; i<gapBuffer.getSize(); i++){
             if(currentX > 620){
-                isXfull=true;
-            }
-            if (isXfull) {
-                CurrentY -= 20;
-                isXfull = false;
+                CurrentY -= rowSize;
                 currentX = 10;
             }
 
             Node currNode = gapBuffer.getNode(i);
 
             if(i == gapBuffer.getCursor()){
+                CursorY = CurrentY;
+                CursorX = currentX;
                 font.setColor(Color.RED);
                 font.draw(batch, "|", currentX - space, CurrentY);
                 font.setColor(Color.WHITE);
             }
             if(currNode.getChar() == '\n'){
-                CurrentY -= 20;
+                CurrentY -= rowSize;
                 currentX = 10;
             }
             font.draw(batch, String.valueOf(currNode.getChar()), currentX, CurrentY);
 
-            currentX += currNode.getCharLength() + space;
+            currentX += colSize;
         }
         if(gapBuffer.getSize()== gapBuffer.getCursor()){
             font.setColor(Color.RED);
@@ -280,9 +344,20 @@ public class TextEditor implements InputProcessor {
         batch.end();
 
     }
+
+    private void deleteSelecteds(){
+        if(selectedStartIndex != -1 && selectedEndIndex != -1){
+            for (int i = selectedEndIndex; i >= selectedStartIndex; i--){
+                gapBuffer.remove(i-1);
+            }
+            System.out.println();
+            selectedStartIndex = -1;
+            selectedEndIndex = -1;
+        }
+    }
+
     @Override
     public boolean touchDown(int screenX, int screenY, int pointer, int button) {
-        selectedLines.clear();
         startX = screenX;
         startY = 480-screenY;
         selecting = true;
@@ -298,9 +373,7 @@ public class TextEditor implements InputProcessor {
             if(i>460){
                 continue;
             }
-            selectedLines.add(i);
         }
-        System.out.println(selectedLines);
         selecting = false;
         System.out.println("Selection from (" + startX + ", " + startY + ") to (" + endX + ", " + endY + ")");
         return true;
