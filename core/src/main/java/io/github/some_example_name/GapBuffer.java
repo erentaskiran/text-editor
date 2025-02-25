@@ -24,11 +24,11 @@ public class GapBuffer {
         return leftPointer;
     }
 
-    public void addChar(char c, char decoration, int charLength) {
+    public void addChar(char c, int charLength, boolean bold, boolean italic, boolean underline) {
         if (leftPointer >= rightPointer) {
             expandBuffer();
         }
-        buffer[leftPointer++] = new Node(c, decoration, charLength);
+        buffer[leftPointer++] = new Node(c, charLength, bold, italic, underline);
         size++;
         totalWidth += charLength + space;
     }
@@ -87,6 +87,14 @@ public class GapBuffer {
 
     public int getTotalWidth() {
         return totalWidth;
+    }
+
+    public void changeDecoration(int index, boolean bold, boolean italic, boolean underline) {
+        if (index < 0 || index >= size) return;
+        Node node = getNode(index);
+        node.setBold(bold);
+        node.setItalic(italic);
+        node.setUnderline(underline);
     }
 
 

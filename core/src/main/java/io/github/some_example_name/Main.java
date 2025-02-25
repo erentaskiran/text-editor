@@ -28,7 +28,7 @@ public class Main extends ApplicationAdapter {
     }
 
     private void logic(){
-
+        textEditor.logic();
     }
 
     private void draw(){
