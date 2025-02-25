@@ -12,10 +12,9 @@ import com.badlogic.gdx.*;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.utils.ScreenUtils;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;;
+import java.sql.Time;
+import java.util.*;
+;
 
 
 public class TextEditor implements InputProcessor {
@@ -34,18 +33,17 @@ public class TextEditor implements InputProcessor {
     GapBuffer gapBuffer;
 
     int CurrentY;
-    int space;
     int startX;
     int startY;
     int endX;
     int endY;
     int selectedStartIndex;
     int selectedEndIndex;
-    HashSet<Integer> currentLines;
     int colSize;
     int rowSize;
     int CursorX;
     int CursorY;
+    Long startTime;
 
     public TextEditor(SpriteBatch batch) {
         this.batch = batch;
@@ -56,6 +54,7 @@ public class TextEditor implements InputProcessor {
         fontParameter.size = 20;
         fontParameter.color = Color.WHITE;
         font = fontGenerator.generateFont(fontParameter);
+        startTime = 0L;
 
         touchPos = new Vector2();
 
@@ -64,7 +63,6 @@ public class TextEditor implements InputProcessor {
 
         viewport = new FitViewport(8, 5);
         CurrentY=460;
-        space = 1;
         startX = 0;
         startY = 0;
         endX = 0;
@@ -83,7 +81,6 @@ public class TextEditor implements InputProcessor {
             gapBuffer.addChar('m', 'n', font.getData().getGlyph('m').width);
         }
 
-        currentLines = new HashSet<>();
 
     }
 
@@ -254,22 +251,6 @@ public class TextEditor implements InputProcessor {
         }
 
         if (Gdx.input.isTouched()) {
-            float x =Gdx.input.getX();
-            float y = 480-Gdx.input.getY();
-            viewport.unproject(touchPos);
-            int sumX = 10;
-            int sumY = 440;
-            for(int i = 0; i<gapBuffer.getSize(); i++){
-                sumX+=gapBuffer.getNode(i).getCharLength() + space;
-                if(sumX >=620 || gapBuffer.getNode(i).getChar() == '\n'){
-                    sumY-=20;
-                    sumX=10;
-                }
-
-                if (Math.abs(sumX-x)<20 && Math.abs(sumY-y)<20){
-                    gapBuffer.moveCursor(i);
-                }
-            }
             isAnyKeyPressed = true;
         }
         if (isAnyKeyPressed){
@@ -324,7 +305,7 @@ public class TextEditor implements InputProcessor {
                 CursorY = CurrentY;
                 CursorX = currentX;
                 font.setColor(Color.RED);
-                font.draw(batch, "|", currentX - space, CurrentY);
+                font.draw(batch, "|", currentX - 1, CurrentY);
                 font.setColor(Color.WHITE);
             }
             if(currNode.getChar() == '\n'){
@@ -337,7 +318,7 @@ public class TextEditor implements InputProcessor {
         }
         if(gapBuffer.getSize()== gapBuffer.getCursor()){
             font.setColor(Color.RED);
-            font.draw(batch, "|", currentX - space, CurrentY);
+            font.draw(batch, "|", currentX - 1, CurrentY);
             font.setColor(Color.WHITE);
         }
 
@@ -358,24 +339,48 @@ public class TextEditor implements InputProcessor {
 
     @Override
     public boolean touchDown(int screenX, int screenY, int pointer, int button) {
-        startX = screenX;
-        startY = 480-screenY;
+        moveCursorWithTouch();
         selecting = true;
+        startTime = System.nanoTime();
+        startX = gapBuffer.getCursor();
         return true;
+    }
+
+    private void moveCursorWithTouch(){
+        float x =Gdx.input.getX();
+        float y = 480-Gdx.input.getY();
+        viewport.unproject(touchPos);
+        int sumX = 10;
+        int sumY = 440;
+        for(int i = 0; i<gapBuffer.getSize(); i++){
+            sumX+=colSize;
+            if(sumX >=620 || gapBuffer.getNode(i).getChar() == '\n'){
+                sumY-=20;
+                sumX=10;
+            }
+
+            if (Math.abs(sumX-x)<20 && Math.abs(sumY-y)<20){
+                gapBuffer.moveCursor(i);
+            }
+        }
     }
 
     @Override
     public boolean touchUp(int screenX, int screenY, int pointer, int button) {
-        endX = screenX;
-        endY = 480-screenY;
+        moveCursorWithTouch();
+        long endTime = System.nanoTime();
+        double elapsedTimeInSeconds = (endTime - startTime) / 1_000_000_000.0;
 
-        for(int i = startY+ (20 -startY%20); i>= endY+(20 -endY%20); i-=20){
-            if(i>460){
-                continue;
+        if (elapsedTimeInSeconds >= 0.15) {
+            selectedStartIndex = startX;
+            selectedEndIndex = gapBuffer.getCursor();
+            if(selectedStartIndex>selectedEndIndex){
+                int tmp = selectedStartIndex;
+                selectedStartIndex = selectedEndIndex;
+                selectedEndIndex = tmp;
             }
         }
         selecting = false;
-        System.out.println("Selection from (" + startX + ", " + startY + ") to (" + endX + ", " + endY + ")");
         return true;
     }
 
