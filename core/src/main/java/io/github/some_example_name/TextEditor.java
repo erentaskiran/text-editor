@@ -3,6 +3,7 @@ package io.github.some_example_name;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.InputProcessor;
 import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
@@ -11,17 +12,22 @@ import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.*;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.utils.ScreenUtils;
-
-import java.sql.Time;
 import java.util.*;
-;
-
 
 public class TextEditor implements InputProcessor {
     private SpriteBatch batch;
-    private FreeTypeFontGenerator fontGenerator;
-    private FreeTypeFontGenerator.FreeTypeFontParameter fontParameter;
-    private BitmapFont font;
+    private FreeTypeFontGenerator FontGenerator;
+    private FreeTypeFontGenerator.FreeTypeFontParameter FontParameter;
+
+    private BitmapFont activeFont;
+    private BitmapFont fontBold;
+    private BitmapFont fontItalic;
+    private BitmapFont fontBoldItalic;
+    private BitmapFont fontRegular;
+    private Texture boldButton;
+    private Texture italicButton;
+    private Texture underlineButton;
+
     ShapeRenderer shapeRenderer;
 
     boolean selecting;
@@ -41,20 +47,60 @@ public class TextEditor implements InputProcessor {
     int selectedEndIndex;
     int colSize;
     int rowSize;
-    int CursorX;
-    int CursorY;
     Long startTime;
+    int screenWidth;
+    int screenHeight;
+    int safeTextAreaX;
+    int safeTextAreaY;
+
+    boolean underlined;
+    boolean bold;
+    boolean italic;
+
 
     public TextEditor(SpriteBatch batch) {
         this.batch = batch;
-        fontGenerator = new FreeTypeFontGenerator(Gdx.files.internal("HackNerdFontMono-Regular.ttf"));
-        fontParameter = new FreeTypeFontGenerator.FreeTypeFontParameter();
-        fontParameter.borderWidth = 0.1f;
-        fontParameter.borderColor = Color.BLACK;
-        fontParameter.size = 20;
-        fontParameter.color = Color.WHITE;
-        font = fontGenerator.generateFont(fontParameter);
+        FontGenerator = new FreeTypeFontGenerator(Gdx.files.internal("HackNerdFontMono-Regular.ttf"));
+        FontParameter = new FreeTypeFontGenerator.FreeTypeFontParameter();
+        FontParameter.borderWidth = 0.1f;
+        FontParameter.borderColor = Color.BLACK;
+        FontParameter.size = 20;
+        FontParameter.color = Color.WHITE;
+        fontRegular = FontGenerator.generateFont(FontParameter);
+
+        FontGenerator = new FreeTypeFontGenerator(Gdx.files.internal("HackNerdFontMono-BoldItalic.ttf"));
+        FontParameter = new FreeTypeFontGenerator.FreeTypeFontParameter();
+        FontParameter.borderWidth = 0.1f;
+        FontParameter.borderColor = Color.BLACK;
+        FontParameter.size = 20;
+        FontParameter.color = Color.WHITE;
+        fontBoldItalic= FontGenerator.generateFont(FontParameter);
+
+        FontGenerator = new FreeTypeFontGenerator(Gdx.files.internal("HackNerdFontMono-Bold.ttf"));
+        FontParameter = new FreeTypeFontGenerator.FreeTypeFontParameter();
+        FontParameter.borderWidth = 0.1f;
+        FontParameter.borderColor = Color.BLACK;
+        FontParameter.size = 20;
+        FontParameter.color = Color.WHITE;
+        fontBold = FontGenerator.generateFont(FontParameter);
+
+        FontGenerator = new FreeTypeFontGenerator(Gdx.files.internal("HackNerdFontMono-Italic.ttf"));
+        FontParameter = new FreeTypeFontGenerator.FreeTypeFontParameter();
+        FontParameter.borderWidth = 0.1f;
+        FontParameter.borderColor = Color.BLACK;
+        FontParameter.size = 20;
+        FontParameter.color = Color.WHITE;
+        fontItalic = FontGenerator.generateFont(FontParameter);
+        activeFont = fontRegular ;
         startTime = 0L;
+
+        boldButton = new Texture("bold.png");
+        italicButton = new Texture("italic.png");
+        underlineButton = new Texture("underline.png");
+
+        bold = false;
+        italic = false;
+        underlined = false;
 
         touchPos = new Vector2();
 
@@ -62,7 +108,7 @@ public class TextEditor implements InputProcessor {
         selecting = false;
 
         viewport = new FitViewport(8, 5);
-        CurrentY=460;
+        CurrentY=safeTextAreaY;
         startX = 0;
         startY = 0;
         endX = 0;
@@ -70,15 +116,17 @@ public class TextEditor implements InputProcessor {
         selectedEndIndex = -1;
         selectedStartIndex = -1;
 
-        CursorX=10;
-        CursorY=460;
+        colSize = activeFont.getData().getGlyph('m').width+1;
+        rowSize = activeFont.getData().getGlyph('m').height+colSize;
 
-        colSize = font.getData().getGlyph('m').width+1;
-        rowSize = font.getData().getGlyph('m').height+colSize;
+        screenWidth = 640;
+        screenHeight = 480;
+        safeTextAreaX = 620;
+        safeTextAreaY = 430;
 
         gapBuffer = new GapBuffer(1024);
         for(int i = 0; i < 49; i++){
-            gapBuffer.addChar('m', 'n', font.getData().getGlyph('m').width);
+            gapBuffer.addChar('m', activeFont.getData().getGlyph('m').width, bold , italic, underlined);
         }
 
 
@@ -86,6 +134,7 @@ public class TextEditor implements InputProcessor {
 
     public void input(){
         boolean isAnyKeyPressed = false;
+        System.out.println(bold + " " + italic + " " + underlined);
 
         if (Gdx.input.isKeyPressed(Input.Keys.SHIFT_LEFT) || Gdx.input.isKeyPressed(Input.Keys.SHIFT_RIGHT)){
             if(gapBuffer.getCursor() < 0 || gapBuffer.getCursor() >= gapBuffer.getSize()){
@@ -118,7 +167,7 @@ public class TextEditor implements InputProcessor {
                     }
                     for (int i = cursor; i >= 0; i--) {
                         sum += colSize;
-                        if (sum >= 620 || gapBuffer.getNode(i).getChar() == '\n') {
+                        if (sum >= safeTextAreaX || gapBuffer.getNode(i).getChar() == '\n') {
                             gapBuffer.moveCursor(i);
                             selectedStartIndex = gapBuffer.getCursor();
                             selectedEndIndex = tmp;
@@ -137,7 +186,7 @@ public class TextEditor implements InputProcessor {
                     }
                     for (int i = cursor; i < gapBuffer.getSize(); i++) {
                         sum += colSize;
-                        if (sum >= 620 || gapBuffer.getNode(i).getChar() == '\n') {
+                        if (sum >= safeTextAreaX || gapBuffer.getNode(i).getChar() == '\n') {
                             gapBuffer.moveCursor(i);
                             selectedEndIndex = gapBuffer.getCursor();
                             selectedStartIndex = tmp;
@@ -164,7 +213,7 @@ public class TextEditor implements InputProcessor {
                     } else {
                         for (int i = cursor; i >= 0; i--) {
                             sum += colSize;
-                            if (sum >= 620 || gapBuffer.getNode(i).getChar() == '\n') {
+                            if (sum >= safeTextAreaX || gapBuffer.getNode(i).getChar() == '\n') {
                                 gapBuffer.moveCursor(i);
                                 break;
                             }
@@ -182,7 +231,7 @@ public class TextEditor implements InputProcessor {
                     } else {
                         for (int i = cursor; i < gapBuffer.getSize(); i++) {
                             sum += colSize;
-                            if (sum >= 620 || gapBuffer.getNode(i).getChar() == '\n') {
+                            if (sum >= safeTextAreaX || gapBuffer.getNode(i).getChar() == '\n') {
                                 gapBuffer.moveCursor(i);
                                 break;
                             }
@@ -202,7 +251,7 @@ public class TextEditor implements InputProcessor {
                 isAnyKeyPressed = true;
             } else if (Gdx.input.isKeyJustPressed(Input.Keys.ENTER)) {
                 deleteSelecteds();
-                gapBuffer.addChar('\n', 'n', 0);
+                gapBuffer.addChar('\n', 0, bold, italic, underlined);
             }
         }
 
@@ -214,7 +263,7 @@ public class TextEditor implements InputProcessor {
                     Gdx.input.isKeyPressed(Input.Keys.CAPS_LOCK)) {
                     letter = Character.toUpperCase(letter);
                 }
-                gapBuffer.addChar(letter, 'n', font.getData().getGlyph(letter).width);
+                gapBuffer.addChar(letter,  activeFont.getData().getGlyph(letter).width, bold, italic, underlined);
                 deleteSelecteds();
                 isAnyKeyPressed = true;
             }
@@ -222,7 +271,7 @@ public class TextEditor implements InputProcessor {
         for (int key = Input.Keys.NUM_0; key <= Input.Keys.NUM_9; key++) {
             if (Gdx.input.isKeyJustPressed(key)) {
                 char number = (char) ('0' + (key - Input.Keys.NUM_0));
-                gapBuffer.addChar(number, 'n', font.getData().getGlyph(number).width);
+                gapBuffer.addChar(number, activeFont.getData().getGlyph(number).width, bold, italic, underlined);
                 deleteSelecteds();
                 isAnyKeyPressed = true;
             }
@@ -244,7 +293,7 @@ public class TextEditor implements InputProcessor {
 
         for (Map.Entry<Integer, Character> entry : specialChars.entrySet()) {
             if (Gdx.input.isKeyJustPressed(entry.getKey())) {
-                gapBuffer.addChar(entry.getValue(), 'n', font.getData().getGlyph(entry.getValue()).width);
+                gapBuffer.addChar(entry.getValue(), activeFont.getData().getGlyph(entry.getValue()).width, bold, italic, underlined);
                 deleteSelecteds();
                 isAnyKeyPressed = true;
             }
@@ -259,26 +308,55 @@ public class TextEditor implements InputProcessor {
         }
     }
 
+    public void logic(){
+        if(selectedStartIndex != selectedEndIndex && selecting){
+            for(int i = selectedStartIndex; i<=selectedEndIndex; i++){
+                gapBuffer.changeDecoration(i, bold, italic, underlined);
+            }
+        }
+    }
+
     public void draw(){
         ScreenUtils.clear(0.f, 0.f, 0f, 0f);
-        CurrentY=460;
+        CurrentY=safeTextAreaY;
 
         int currentX=10;
+
+        //icon background
+        batch.begin();
+
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+        shapeRenderer.setColor(255f, 0.1f, 0.1f, 1);
+        shapeRenderer.rect(0, screenHeight-40, screenWidth, 40);
+        shapeRenderer.end();
+
+        batch.end();
+
+        //icons
+        batch.begin();
+
+        batch.draw(boldButton, screenWidth/4, screenHeight-40, 40, 40);
+        batch.draw(italicButton, screenWidth*2/4, screenHeight-40, 40, 40);
+        batch.draw(underlineButton, screenWidth*3/4, screenHeight-40, 40, 40);
+
+        batch.end();
+
+        //selected text
         batch.begin();
         if (!selecting) {
             shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
             shapeRenderer.setColor(0, 0, 1, 0.5f);
 
             if(selectedStartIndex != -1 && selectedEndIndex != -1) {
-                int y = 440;
+                int y = safeTextAreaY - 20;
                 int tmp = selectedStartIndex * colSize;
-                int x = tmp%620-3;
+                int x = tmp%safeTextAreaX-3;
                 for (int i = selectedStartIndex; i <= selectedEndIndex; i++) {
-                    while (tmp >= 620) {
+                    while (tmp >= safeTextAreaX) {
                         y -= rowSize;
-                        tmp -= 620;
+                        tmp -= safeTextAreaX;
                     }
-                    if(x>=620){
+                    if(x>=safeTextAreaX){
                         x=10;
                     }
                     shapeRenderer.rect(x, y, colSize, rowSize);
@@ -291,35 +369,44 @@ public class TextEditor implements InputProcessor {
         }
         batch.end();
 
+
+        //text
         batch.begin();
 
         for(int i = 0; i<gapBuffer.getSize(); i++){
-            if(currentX > 620){
+            if(currentX > safeTextAreaX){
                 CurrentY -= rowSize;
                 currentX = 10;
             }
 
             Node currNode = gapBuffer.getNode(i);
+            if(currNode.isBold() && currNode.isItalic()){
+                activeFont = fontBoldItalic;
+            }else if(currNode.isBold()){
+                activeFont = fontBold;
+            }else if(currNode.isItalic()){
+                activeFont = fontItalic;
+            }else{
+                activeFont = fontRegular;
+            }
 
             if(i == gapBuffer.getCursor()){
-                CursorY = CurrentY;
-                CursorX = currentX;
-                font.setColor(Color.RED);
-                font.draw(batch, "|", currentX - 1, CurrentY);
-                font.setColor(Color.WHITE);
+                activeFont.setColor(Color.RED);
+                activeFont.draw(batch, "|", currentX - 1, CurrentY);
+                activeFont.setColor(Color.WHITE);
             }
             if(currNode.getChar() == '\n'){
                 CurrentY -= rowSize;
                 currentX = 10;
             }
-            font.draw(batch, String.valueOf(currNode.getChar()), currentX, CurrentY);
+            activeFont.draw(batch, String.valueOf(currNode.getChar()), currentX, CurrentY);
 
             currentX += colSize;
         }
         if(gapBuffer.getSize()== gapBuffer.getCursor()){
-            font.setColor(Color.RED);
-            font.draw(batch, "|", currentX - 1, CurrentY);
-            font.setColor(Color.WHITE);
+            activeFont.setColor(Color.RED);
+            activeFont.draw(batch, "|", currentX - 1, CurrentY);
+            activeFont.setColor(Color.WHITE);
         }
 
         batch.end();
@@ -339,6 +426,15 @@ public class TextEditor implements InputProcessor {
 
     @Override
     public boolean touchDown(int screenX, int screenY, int pointer, int button) {
+        int x = screenX;
+        int y = screenHeight - screenY;
+        if (x < screenWidth / 4 + 40 && x > screenWidth / 4 && y > screenHeight - 40 && y < screenHeight) {
+            bold = !bold;
+        } else if (x < screenWidth * 2 / 4 + 40 && x > screenWidth * 2 / 4 && y > screenHeight - 40 && y < screenHeight) {
+            italic = !italic;
+        } else if (x < screenWidth * 3 / 4 + 40 && x > screenWidth * 3 / 4 && y > screenHeight - 40 && y < screenHeight) {
+            underlined = !underlined;
+        }
         moveCursorWithTouch();
         selecting = true;
         startTime = System.nanoTime();
@@ -351,10 +447,10 @@ public class TextEditor implements InputProcessor {
         float y = 480-Gdx.input.getY();
         viewport.unproject(touchPos);
         int sumX = 10;
-        int sumY = 440;
+        int sumY = safeTextAreaY - 20;
         for(int i = 0; i<gapBuffer.getSize(); i++){
             sumX+=colSize;
-            if(sumX >=620 || gapBuffer.getNode(i).getChar() == '\n'){
+            if(sumX >=safeTextAreaX || gapBuffer.getNode(i).getChar() == '\n'){
                 sumY-=20;
                 sumX=10;
             }
@@ -384,18 +480,9 @@ public class TextEditor implements InputProcessor {
         return true;
     }
 
-    @Override
-    public boolean touchCancelled(int screenX, int screenY, int pointer, int button) {
-        return false;
-    }
-
+    @Override public boolean touchCancelled(int screenX, int screenY, int pointer, int button) {return false;}
     @Override public boolean touchDragged(int screenX, int screenY, int pointer) { return false; }
-
-    @Override
-    public boolean mouseMoved(int screenX, int screenY) {
-        return false;
-    }
-
+    @Override public boolean mouseMoved(int screenX, int screenY) {return false;}
     @Override public boolean keyDown(int keycode) { return false; }
     @Override public boolean keyUp(int keycode) { return false; }
     @Override public boolean keyTyped(char character) { return false; }
