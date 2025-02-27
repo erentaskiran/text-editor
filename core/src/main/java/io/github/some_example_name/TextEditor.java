@@ -12,21 +12,21 @@ import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.*;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.utils.ScreenUtils;
-import java.util.*;
+
+import java.util.HashMap;
+import java.util.Map;
 
 public class TextEditor implements InputProcessor {
-    private SpriteBatch batch;
-    private FreeTypeFontGenerator FontGenerator;
-    private FreeTypeFontGenerator.FreeTypeFontParameter FontParameter;
+    private final SpriteBatch batch;
 
     private BitmapFont activeFont;
-    private BitmapFont fontBold;
-    private BitmapFont fontItalic;
-    private BitmapFont fontBoldItalic;
-    private BitmapFont fontRegular;
-    private Texture boldButton;
-    private Texture italicButton;
-    private Texture underlineButton;
+    private final BitmapFont fontBold;
+    private final BitmapFont fontItalic;
+    private final BitmapFont fontBoldItalic;
+    private final BitmapFont fontRegular;
+    private final Texture boldButton;
+    private final Texture italicButton;
+    private final Texture underlineButton;
 
     ShapeRenderer shapeRenderer;
 
@@ -60,37 +60,37 @@ public class TextEditor implements InputProcessor {
 
     public TextEditor(SpriteBatch batch) {
         this.batch = batch;
-        FontGenerator = new FreeTypeFontGenerator(Gdx.files.internal("HackNerdFontMono-Regular.ttf"));
-        FontParameter = new FreeTypeFontGenerator.FreeTypeFontParameter();
-        FontParameter.borderWidth = 0.1f;
-        FontParameter.borderColor = Color.BLACK;
-        FontParameter.size = 20;
-        FontParameter.color = Color.WHITE;
-        fontRegular = FontGenerator.generateFont(FontParameter);
+        FreeTypeFontGenerator fontGenerator = new FreeTypeFontGenerator(Gdx.files.internal("HackNerdFontMono-Regular.ttf"));
+        FreeTypeFontGenerator.FreeTypeFontParameter fontParameter = new FreeTypeFontGenerator.FreeTypeFontParameter();
+        fontParameter.borderWidth = 0.1f;
+        fontParameter.borderColor = Color.BLACK;
+        fontParameter.size = 20;
+        fontParameter.color = Color.WHITE;
+        fontRegular = fontGenerator.generateFont(fontParameter);
 
-        FontGenerator = new FreeTypeFontGenerator(Gdx.files.internal("HackNerdFontMono-BoldItalic.ttf"));
-        FontParameter = new FreeTypeFontGenerator.FreeTypeFontParameter();
-        FontParameter.borderWidth = 0.1f;
-        FontParameter.borderColor = Color.BLACK;
-        FontParameter.size = 20;
-        FontParameter.color = Color.WHITE;
-        fontBoldItalic= FontGenerator.generateFont(FontParameter);
+        fontGenerator = new FreeTypeFontGenerator(Gdx.files.internal("HackNerdFontMono-BoldItalic.ttf"));
+        fontParameter = new FreeTypeFontGenerator.FreeTypeFontParameter();
+        fontParameter.borderWidth = 0.1f;
+        fontParameter.borderColor = Color.BLACK;
+        fontParameter.size = 20;
+        fontParameter.color = Color.WHITE;
+        fontBoldItalic= fontGenerator.generateFont(fontParameter);
 
-        FontGenerator = new FreeTypeFontGenerator(Gdx.files.internal("HackNerdFontMono-Bold.ttf"));
-        FontParameter = new FreeTypeFontGenerator.FreeTypeFontParameter();
-        FontParameter.borderWidth = 0.1f;
-        FontParameter.borderColor = Color.BLACK;
-        FontParameter.size = 20;
-        FontParameter.color = Color.WHITE;
-        fontBold = FontGenerator.generateFont(FontParameter);
+        fontGenerator = new FreeTypeFontGenerator(Gdx.files.internal("HackNerdFontMono-Bold.ttf"));
+        fontParameter = new FreeTypeFontGenerator.FreeTypeFontParameter();
+        fontParameter.borderWidth = 0.1f;
+        fontParameter.borderColor = Color.BLACK;
+        fontParameter.size = 20;
+        fontParameter.color = Color.WHITE;
+        fontBold = fontGenerator.generateFont(fontParameter);
 
-        FontGenerator = new FreeTypeFontGenerator(Gdx.files.internal("HackNerdFontMono-Italic.ttf"));
-        FontParameter = new FreeTypeFontGenerator.FreeTypeFontParameter();
-        FontParameter.borderWidth = 0.1f;
-        FontParameter.borderColor = Color.BLACK;
-        FontParameter.size = 20;
-        FontParameter.color = Color.WHITE;
-        fontItalic = FontGenerator.generateFont(FontParameter);
+        fontGenerator = new FreeTypeFontGenerator(Gdx.files.internal("HackNerdFontMono-Italic.ttf"));
+        fontParameter = new FreeTypeFontGenerator.FreeTypeFontParameter();
+        fontParameter.borderWidth = 0.1f;
+        fontParameter.borderColor = Color.BLACK;
+        fontParameter.size = 20;
+        fontParameter.color = Color.WHITE;
+        fontItalic = fontGenerator.generateFont(fontParameter);
         activeFont = fontRegular ;
         startTime = 0L;
 
@@ -400,6 +400,10 @@ public class TextEditor implements InputProcessor {
                 currentX = 10;
             }
             activeFont.draw(batch, String.valueOf(currNode.getChar()), currentX, CurrentY);
+            if(currNode.isUnderline()){
+                activeFont=fontRegular;
+                activeFont.draw(batch, "_", currentX, CurrentY-3);
+            }
 
             currentX += colSize;
         }
