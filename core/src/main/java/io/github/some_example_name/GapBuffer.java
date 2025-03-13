@@ -106,15 +106,18 @@ public class GapBuffer {
         moveCursor(index + 1);
 
         if (leftPointer > 0) {
-            Node removedNode = buffer[leftPointer - 1];
+            if(lineBreaks.contains(leftPointer - 1)){
+                removeLineBreak(leftPointer - 1);
+            }
             leftPointer--;
             buffer[leftPointer] = null;
             size--;
 
-            if (removedNode.getChar() == '\n') {
-                removeLineBreak(index+1);
-            }
         }
+    }
+
+    public void addLineBreak() {
+        lineBreaks.add(leftPointer);
     }
 
     private void removeLineBreak(int index) {

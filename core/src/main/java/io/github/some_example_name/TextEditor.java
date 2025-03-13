@@ -193,7 +193,7 @@ public class TextEditor implements InputProcessor {
 
     private void handleEnterKey() {
         deleteSelecteds();
-        gapBuffer.addChar('\n', bold, italic, underlined);
+        gapBuffer.addLineBreak();
         if (cursorY < 20) safeAreaTopRow += rowSize;
     }
 
@@ -322,6 +322,15 @@ public class TextEditor implements InputProcessor {
         batch.begin();
         int y = safeTextAreaY;
         int k = 0;
+
+        for(int i = 0; i<lines.size(); i++){
+            for (int j = 0; j<lines.get(i).size(); j++){
+                System.out.print(lines.get(i).get(j).getChar());
+            }
+            System.out.println();
+        }
+
+
         for (int i = 0; i <lines.size(); i++) {
             for (int j = 0; j < lines.get(i).size(); j++) {
                 Node currNode = lines.get(i).get(j);
