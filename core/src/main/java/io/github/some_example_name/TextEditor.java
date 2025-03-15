@@ -55,6 +55,10 @@ public class TextEditor implements InputProcessor {
     int safeAreaTopRow;
     int cursorY;
     int cursorIndex;
+    boolean isAnyKeyPressed;
+
+    List<List<Node>> lines;
+    int topIndex;
 
     int contentHeigth;
     int scrollBarHeight;
@@ -63,6 +67,8 @@ public class TextEditor implements InputProcessor {
     boolean underlined;
     boolean bold;
     boolean italic;
+    private boolean isDraggingScrollbar;
+
 
 
     public TextEditor(SpriteBatch batch) {
@@ -127,6 +133,7 @@ public class TextEditor implements InputProcessor {
         safeAreaTopRow = 0;
         cursorY = 0;
         cursorIndex = 0;
+        isAnyKeyPressed= false;
 
         colSize = activeFont.getData().getGlyph('m').width + 1;
         rowSize = activeFont.getData().getGlyph('m').height + colSize;
@@ -141,6 +148,8 @@ public class TextEditor implements InputProcessor {
             gapBuffer.addChar('m', bold, italic, underlined);
         }
 
+        topIndex = 0;
+        isAnyKeyPressed = false;
 
     }
 
@@ -150,28 +159,34 @@ public class TextEditor implements InputProcessor {
         }
         if (Gdx.input.isKeyJustPressed(Input.Keys.RIGHT)) {
             gapBuffer.moveCursorRight();
-            updateSelectionIndices();
+            updateSelectionIndices(1, -1);
         } else if (Gdx.input.isKeyJustPressed(Input.Keys.LEFT)) {
             gapBuffer.moveCursorLeft();
-            updateSelectionIndices();
+            updateSelectionIndices(0, -1);
         } else if (Gdx.input.isKeyJustPressed(Input.Keys.UP)) {
+            int currIndex = gapBuffer.getCursor();
             gapBuffer.moveCursorUp();
-            updateSelectionIndices();
+            updateSelectionIndices(0, currIndex);
         } else if (Gdx.input.isKeyJustPressed(Input.Keys.DOWN)) {
             gapBuffer.moveCursorDown();
-            updateSelectionIndices();
+            int currIndex = gapBuffer.getCursor();
+            updateSelectionIndices(1, currIndex);
         }
     }
 
     private void handleRegularKeyInput() {
         if (Gdx.input.isKeyJustPressed(Input.Keys.RIGHT)) {
             gapBuffer.moveCursorRight();
+            isAnyKeyPressed = true;
         } else if (Gdx.input.isKeyJustPressed(Input.Keys.LEFT)) {
             gapBuffer.moveCursorLeft();
+            isAnyKeyPressed = true;
         } else if (Gdx.input.isKeyJustPressed(Input.Keys.UP)) {
             gapBuffer.moveCursorUp();
+            isAnyKeyPressed = true;
         } else if (Gdx.input.isKeyJustPressed(Input.Keys.DOWN)) {
             gapBuffer.moveCursorDown();
+            isAnyKeyPressed = true;
         } else if (Gdx.input.isKeyJustPressed(Input.Keys.BACKSPACE)) {
             handleBackspace();
         } else if (Gdx.input.isKeyJustPressed(Input.Keys.ENTER)) {
@@ -189,12 +204,14 @@ public class TextEditor implements InputProcessor {
                 gapBuffer.remove(gapBuffer.getCursor() - 1);
             }
         }
+        isAnyKeyPressed = true;
     }
 
     private void handleEnterKey() {
         deleteSelecteds();
         gapBuffer.addLineBreak();
         if (cursorY < 20) safeAreaTopRow += rowSize;
+        isAnyKeyPressed = true;
     }
 
     private void handleCharacterInput() {
@@ -206,9 +223,10 @@ public class TextEditor implements InputProcessor {
                     Gdx.input.isKeyPressed(Input.Keys.CAPS_LOCK)) {
                     letter = Character.toUpperCase(letter);
                 }
-                gapBuffer.addChar(letter, bold, italic, underlined);
                 deleteSelecteds();
+                gapBuffer.addChar(letter, bold, italic, underlined);
                 if (cursorY < 20) safeAreaTopRow += rowSize;
+                isAnyKeyPressed = true;
             }
         }
         handleNumberInput();
@@ -219,9 +237,10 @@ public class TextEditor implements InputProcessor {
         for (int key = Input.Keys.NUM_0; key <= Input.Keys.NUM_9; key++) {
             if (Gdx.input.isKeyJustPressed(key)) {
                 char number = (char) ('0' + (key - Input.Keys.NUM_0));
-                gapBuffer.addChar(number, bold, italic, underlined);
                 deleteSelecteds();
+                gapBuffer.addChar(number, bold, italic, underlined);
                 if (cursorY < 20) safeAreaTopRow += rowSize;
+                isAnyKeyPressed = true;
             }
         }
     }
@@ -243,24 +262,40 @@ public class TextEditor implements InputProcessor {
 
         for (Map.Entry<Integer, Character> entry : specialChars.entrySet()) {
             if (Gdx.input.isKeyJustPressed(entry.getKey())) {
-                gapBuffer.addChar(entry.getValue(), bold, italic, underlined);
                 deleteSelecteds();
+                gapBuffer.addChar(entry.getValue(), bold, italic, underlined);
                 if (cursorY < 20) safeAreaTopRow += rowSize;
+                isAnyKeyPressed = true;
             }
         }
     }
 
-    private void updateSelectionIndices() {
-        if (selectedStartIndex < 0) {
-            selectedStartIndex = gapBuffer.getCursor();
+    private void updateSelectionIndices(int rotation, int currentIndex) {
+        if(rotation == 1){
+            if (selectedStartIndex < 0) {
+                selectedStartIndex = gapBuffer.getCursor();
+            }
+            selectedEndIndex = gapBuffer.getCursor();
+        }else if (rotation == 0){
+            if (selectedEndIndex < 0) {
+                selectedEndIndex = gapBuffer.getCursor()+1;
+            }
+            selectedStartIndex = gapBuffer.getCursor()+1;
         }
-        selectedEndIndex = gapBuffer.getCursor();
+
+        if(currentIndex != -1){
+            if(rotation == 1){
+                selectedStartIndex = gapBuffer.getCursor();
+                selectedEndIndex = currentIndex;
+            }else if (rotation == 0){
+                selectedEndIndex = currentIndex+1;
+                selectedStartIndex = gapBuffer.getCursor()+1;
+            }
+        }
         selecting = false;
     }
 
     public void input() {
-        boolean isAnyKeyPressed = false;
-
         if (Gdx.input.isKeyPressed(Input.Keys.SHIFT_LEFT) || Gdx.input.isKeyPressed(Input.Keys.SHIFT_RIGHT)) {
             handleShiftKeyInput();
         } else {
@@ -270,103 +305,97 @@ public class TextEditor implements InputProcessor {
         if (Gdx.input.isTouched()) {
             isAnyKeyPressed = true;
         }
-        if (isAnyKeyPressed) {
-            selectedStartIndex = 1;
-            selectedEndIndex = -1;
-        }
     }
+
     public void logic() {
         if (selectedStartIndex != selectedEndIndex && selecting) {
             for (int i = selectedStartIndex; i <= selectedEndIndex; i++) {
                 gapBuffer.changeDecoration(i, bold, italic, underlined);
             }
         }
-        if (contentHeigth <= 0) {
-            contentHeigth = 1;
+
+        if (lines == null) {
+            lines = gapBuffer.getLines();
         }
-        float tmp = (float) contentHeigth / (safeTextAreaY - rowSize);
+        float tmp = (float) lines.size() * rowSize / safeTextAreaY;
         if (tmp > 1) {
             scrollBarHeight = (int) (safeTextAreaY / tmp);
         } else {
-            scrollBarHeight = safeTextAreaY;
+            scrollBarHeight = 0;
+        }
+        if (isAnyKeyPressed) {
+            selectedStartIndex = -1;
+            selectedEndIndex = -1;
+            lines = gapBuffer.getLines();
+            isAnyKeyPressed = false;
+        }
+
+        if (cursorY-rowSize < 0) {
+            topIndex++;
+            cursorY += rowSize;
+        } else if (cursorY-rowSize > safeTextAreaY - rowSize) {
+            topIndex--;
+            cursorY -= rowSize;
         }
     }
 
     public void draw() {
         ScreenUtils.clear(0.f, 0.f, 0f, 0f);
-        List<List<Node>> lines = gapBuffer.getLines();
 
-        //selected text
+        // Selected text
         batch.begin();
         if (!selecting) {
             shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
             shapeRenderer.setColor(0, 0, 1, 0.5f);
             int y = safeTextAreaY - rowSize;
             int k = 0;
-            for (int i = 0; i <lines.size(); i++) {
+            for (int i = 0; i < lines.size(); i++) {
                 for (int j = 0; j < lines.get(i).size(); j++) {
-                    if (k>=selectedStartIndex && k<=selectedEndIndex) {
-                        shapeRenderer.rect((j-1) * colSize, y, colSize, rowSize);
+                    if (k >= selectedStartIndex && k <= selectedEndIndex) {
+                        shapeRenderer.rect((j - 1) * colSize, y, colSize, rowSize);
                     }
                     k++;
                 }
                 y -= rowSize;
             }
-
             shapeRenderer.end();
         }
         batch.end();
 
-
-        //text
+        // Text
         batch.begin();
-        int y = safeTextAreaY;
+        int y = safeTextAreaY + topIndex * rowSize;
         int k = 0;
+        int x = 0;
+        boolean cursorDrawn;
 
-        for(int i = 0; i<lines.size(); i++){
-            for (int j = 0; j<lines.get(i).size(); j++){
-                System.out.print(lines.get(i).get(j).getChar());
-            }
-            System.out.println();
-        }
-
-
-        for (int i = 0; i <lines.size(); i++) {
+        for (int i = 0; i < lines.size(); i++) {
+            cursorDrawn = false;
             for (int j = 0; j < lines.get(i).size(); j++) {
                 Node currNode = lines.get(i).get(j);
-                int x = j*colSize;
+                x = j * colSize;
 
-                //font selection
-                if (currNode.isBold() && currNode.isItalic()) {
-                    activeFont = fontBoldItalic;
-                } else if (currNode.isBold()) {
-                    activeFont = fontBold;
-                } else if (currNode.isItalic()) {
-                    activeFont = fontItalic;
-                } else {
-                    activeFont = fontRegular;
-                }
+                // Font selection
+                selectFont(currNode);
 
-                //draw text
-                if (k == gapBuffer.getCursor()) {
-                    activeFont.setColor(Color.RED);
-                    activeFont.draw(batch, "|", x - 1, y);
-                    activeFont.setColor(Color.WHITE);
-                    cursorY = y;
-                }
-                activeFont.draw(batch, String.valueOf(currNode.getChar()), x, y);
-                if (currNode.isUnderline()) {
-                    activeFont = fontRegular;
-                    activeFont.draw(batch, "_", x, y - 3);
+                // Draw text
+                drawCharacter(currNode, x, y);
+
+                if (k == gapBuffer.getCursor() && x != 0) {
+                    drawCursor(x, y);
+                    cursorDrawn = true;
                 }
 
                 k++;
+            }
+            if (k == gapBuffer.getCursor() && !cursorDrawn) {
+                drawCursor(x + colSize - 1, y);
             }
             y -= rowSize;
         }
         batch.end();
 
-        //scrollbar
+        // Scrollbar
         batch.begin();
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
         shapeRenderer.setColor(0.1f, 255f, 0.1f, 1);
@@ -380,28 +409,49 @@ public class TextEditor implements InputProcessor {
         }
         shapeRenderer.rect(safeTextAreaX, scrollbarY, 20, scrollBarHeight);
         shapeRenderer.end();
-
         batch.end();
 
-        //icon background
+        // Icon background
         batch.begin();
-
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
         shapeRenderer.setColor(255f, 0.1f, 0.1f, 1);
         shapeRenderer.rect(0, screenHeight - 40, screenWidth, 40);
         shapeRenderer.end();
-
         batch.end();
 
-        //icons
+        // Icons
         batch.begin();
-
         batch.draw(boldButton, (float) screenWidth / 4, screenHeight - 40, 40, 40);
         batch.draw(italicButton, (float) (screenWidth * 2) / 4, screenHeight - 40, 40, 40);
         batch.draw(underlineButton, (float) (screenWidth * 3) / 4, screenHeight - 40, 40, 40);
-
         batch.end();
+    }
 
+    private void selectFont(Node node) {
+        if (node.isBold() && node.isItalic()) {
+            activeFont = fontBoldItalic;
+        } else if (node.isBold()) {
+            activeFont = fontBold;
+        } else if (node.isItalic()) {
+            activeFont = fontItalic;
+        } else {
+            activeFont = fontRegular;
+        }
+    }
+
+    private void drawCharacter(Node node, int x, int y) {
+        activeFont.draw(batch, String.valueOf(node.getChar()), x, y);
+        if (node.isUnderline()) {
+            activeFont = fontRegular;
+            activeFont.draw(batch, "_", x, y - 3);
+        }
+    }
+
+    private void drawCursor(int x, int y) {
+        activeFont.setColor(Color.RED);
+        activeFont.draw(batch, "|", x - 1, y);
+        activeFont.setColor(Color.WHITE);
+        cursorY = y;
     }
 
     private void deleteSelecteds() {
@@ -429,6 +479,14 @@ public class TextEditor implements InputProcessor {
         selecting = true;
         startTime = System.nanoTime();
         cursorIndex = gapBuffer.getCursor();
+        if (startX > safeTextAreaX && startY >= scrollbarY && startY <= scrollbarY + scrollBarHeight) {
+            isDraggingScrollbar = true;
+        } else {
+            moveCursorWithTouch();
+            selecting = true;
+            startTime = System.nanoTime();
+            cursorIndex = gapBuffer.getCursor();
+        }
         return true;
     }
 
@@ -452,26 +510,6 @@ public class TextEditor implements InputProcessor {
                 k++;
             }
         }
-    }
-
-    private void moveScrollbarWithTouch() {
-        if (startX < safeTextAreaX) {
-            return;
-        }
-        if (startY > endY) {
-            System.out.println("scrolling down");
-            scrollbarY += 40;
-            while (scrollbarY + scrollBarHeight < safeTextAreaY && startY > scrollbarY + scrollBarHeight) {
-                scrollbarY++;
-            }
-        } else {
-            System.out.println("scrolling up");
-            while (scrollbarY > 0 && startY < scrollbarY) {
-                scrollbarY--;
-            }
-        }
-        System.out.println(startX + " " + startY);
-
     }
 
     @Override
@@ -498,7 +536,30 @@ public class TextEditor implements InputProcessor {
         endX = screenX;
         endY = screenHeight - screenY;
 
-        moveScrollbarWithTouch();
+        if (isDraggingScrollbar) {
+            isDraggingScrollbar = false;
+        } else {
+            moveCursorWithTouch();
+
+            if (startX < safeTextAreaX) {
+                long endTime = System.nanoTime();
+                double elapsedTimeInSeconds = (endTime - startTime) / 1_000_000_000.0;
+
+                if (elapsedTimeInSeconds >= 0.15) {
+                    selectedStartIndex = cursorIndex;
+                    selectedEndIndex = gapBuffer.getCursor();
+                    if (selectedStartIndex > selectedEndIndex) {
+                        int tmp = selectedStartIndex;
+                        selectedStartIndex = selectedEndIndex;
+                        selectedEndIndex = tmp;
+                    }
+                }
+            }
+
+            selecting = false;
+            endX = screenX;
+            endY = screenHeight - screenY;
+        }
         return true;
     }
 
@@ -509,7 +570,20 @@ public class TextEditor implements InputProcessor {
 
     @Override
     public boolean touchDragged(int screenX, int screenY, int pointer) {
-        return false;
+        if (isDraggingScrollbar) {
+            int deltaY = startY - (screenHeight - screenY);
+            scrollbarY -= deltaY;
+            startY = screenHeight - screenY;
+
+            if (scrollbarY < 0) {
+                scrollbarY = 0;
+            } else if (scrollbarY > safeTextAreaY - scrollBarHeight) {
+                scrollbarY = safeTextAreaY - scrollBarHeight;
+            }
+
+            topIndex = (int) ((float) scrollbarY / (safeTextAreaY - scrollBarHeight) * lines.size());
+        }
+        return true;
     }
 
     @Override

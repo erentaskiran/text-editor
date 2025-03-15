@@ -33,8 +33,10 @@ public class GapBuffer {
         }
         buffer[leftPointer++] = new Node(c, bold, italic, underline);
         size++;
-        if (c == '\n') {
-            lineBreaks.add(leftPointer);
+        for(int i = 0; i < lineBreaks.size(); i++){
+            if(leftPointer <= lineBreaks.get(i)){
+                lineBreaks.set(i, lineBreaks.get(i) + 1);
+            }
         }
     }
 
@@ -108,6 +110,11 @@ public class GapBuffer {
         if (leftPointer > 0) {
             if(lineBreaks.contains(leftPointer - 1)){
                 removeLineBreak(leftPointer - 1);
+            }
+            for(int i = 0; i < lineBreaks.size(); i++){
+                if(leftPointer <= lineBreaks.get(i)){
+                    lineBreaks.set(i, lineBreaks.get(i) - 1);
+                }
             }
             leftPointer--;
             buffer[leftPointer] = null;
