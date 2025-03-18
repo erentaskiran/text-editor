@@ -56,20 +56,16 @@ public class TextEditor implements InputProcessor {
     int cursorY;
     int cursorIndex;
     boolean isAnyKeyPressed;
+    int cursorLine;
 
     List<List<Node>> lines;
     int topIndex;
 
     int contentHeigth;
-    int scrollBarHeight;
-    int scrollbarY;
-
     boolean underlined;
     boolean bold;
     boolean italic;
-    private boolean isDraggingScrollbar;
-
-
+    private final ScrollBar scrollBar;
 
     public TextEditor(SpriteBatch batch) {
         this.batch = batch;
@@ -129,7 +125,6 @@ public class TextEditor implements InputProcessor {
         selectedStartIndex = -1;
 
         contentHeigth = 0;
-        scrollBarHeight = 0;
         safeAreaTopRow = 0;
         cursorY = 0;
         cursorIndex = 0;
@@ -150,6 +145,9 @@ public class TextEditor implements InputProcessor {
 
         topIndex = 0;
         isAnyKeyPressed = false;
+        cursorLine=0;
+
+        scrollBar = new ScrollBar(safeTextAreaX, 0, 20, safeTextAreaY);
 
     }
 
@@ -285,10 +283,14 @@ public class TextEditor implements InputProcessor {
 
         if(currentIndex != -1){
             if(rotation == 1){
-                selectedStartIndex = gapBuffer.getCursor();
+                if (selectedStartIndex < 0) {
+                    selectedStartIndex = gapBuffer.getCursor();
+                }
                 selectedEndIndex = currentIndex;
             }else if (rotation == 0){
-                selectedEndIndex = currentIndex+1;
+                if (selectedEndIndex < 0) {
+                    selectedEndIndex = gapBuffer.getCursor()+1;
+                }
                 selectedStartIndex = gapBuffer.getCursor()+1;
             }
         }
@@ -317,12 +319,9 @@ public class TextEditor implements InputProcessor {
         if (lines == null) {
             lines = gapBuffer.getLines();
         }
-        float tmp = (float) lines.size() * rowSize / safeTextAreaY;
-        if (tmp > 1) {
-            scrollBarHeight = (int) (safeTextAreaY / tmp);
-        } else {
-            scrollBarHeight = 0;
-        }
+
+        scrollBar.update(lines.size(), rowSize);
+
         if (isAnyKeyPressed) {
             selectedStartIndex = -1;
             selectedEndIndex = -1;
@@ -384,12 +383,14 @@ public class TextEditor implements InputProcessor {
                 if (k == gapBuffer.getCursor() && x != 0) {
                     drawCursor(x, y);
                     cursorDrawn = true;
+                    cursorLine=i;
                 }
 
                 k++;
             }
             if (k == gapBuffer.getCursor() && !cursorDrawn) {
                 drawCursor(x + colSize - 1, y);
+                cursorLine=i;
             }
             y -= rowSize;
         }
@@ -397,18 +398,7 @@ public class TextEditor implements InputProcessor {
 
         // Scrollbar
         batch.begin();
-        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
-        shapeRenderer.setColor(0.1f, 255f, 0.1f, 1);
-        int tmp = cursorY - scrollBarHeight / 2;
-        if (tmp < 0) {
-            scrollbarY = 0;
-        } else if (tmp > safeTextAreaY / 2) {
-            scrollbarY = safeTextAreaY - scrollBarHeight;
-        } else {
-            scrollbarY = tmp;
-        }
-        shapeRenderer.rect(safeTextAreaX, scrollbarY, 20, scrollBarHeight);
-        shapeRenderer.end();
+        scrollBar.render(shapeRenderer);
         batch.end();
 
         // Icon background
@@ -479,13 +469,9 @@ public class TextEditor implements InputProcessor {
         selecting = true;
         startTime = System.nanoTime();
         cursorIndex = gapBuffer.getCursor();
-        if (startX > safeTextAreaX && startY >= scrollbarY && startY <= scrollbarY + scrollBarHeight) {
-            isDraggingScrollbar = true;
-        } else {
-            moveCursorWithTouch();
-            selecting = true;
-            startTime = System.nanoTime();
-            cursorIndex = gapBuffer.getCursor();
+        if (scrollBar.hitTest(startX, startY)) {
+            scrollBar.setDragging(true);
+            return true;
         }
         return true;
     }
@@ -516,19 +502,9 @@ public class TextEditor implements InputProcessor {
     public boolean touchUp(int screenX, int screenY, int pointer, int button) {
         moveCursorWithTouch();
 
-        if (startX < safeTextAreaX) {
-            long endTime = System.nanoTime();
-            double elapsedTimeInSeconds = (endTime - startTime) / 1_000_000_000.0;
-
-            if (elapsedTimeInSeconds >= 0.15) {
-                selectedStartIndex = cursorIndex;
-                selectedEndIndex = gapBuffer.getCursor();
-                if (selectedStartIndex > selectedEndIndex) {
-                    int tmp = selectedStartIndex;
-                    selectedStartIndex = selectedEndIndex;
-                    selectedEndIndex = tmp;
-                }
-            }
+        if (scrollBar.isDragging()) {
+            scrollBar.setDragging(false);
+            return true;
         }
 
         selecting = false;
@@ -536,9 +512,6 @@ public class TextEditor implements InputProcessor {
         endX = screenX;
         endY = screenHeight - screenY;
 
-        if (isDraggingScrollbar) {
-            isDraggingScrollbar = false;
-        } else {
             moveCursorWithTouch();
 
             if (startX < safeTextAreaX) {
@@ -559,7 +532,6 @@ public class TextEditor implements InputProcessor {
             selecting = false;
             endX = screenX;
             endY = screenHeight - screenY;
-        }
         return true;
     }
 
@@ -570,20 +542,14 @@ public class TextEditor implements InputProcessor {
 
     @Override
     public boolean touchDragged(int screenX, int screenY, int pointer) {
-        if (isDraggingScrollbar) {
-            int deltaY = startY - (screenHeight - screenY);
-            scrollbarY -= deltaY;
-            startY = screenHeight - screenY;
-
-            if (scrollbarY < 0) {
-                scrollbarY = 0;
-            } else if (scrollbarY > safeTextAreaY - scrollBarHeight) {
-                scrollbarY = safeTextAreaY - scrollBarHeight;
+        if (scrollBar.isDragging()) {
+            if (scrollBar.handleDrag(startY, screenY, screenHeight)) {
+                topIndex = (int) (scrollBar.getScrollPosition() * lines.size());
+                startY = screenHeight - screenY;
             }
-
-            topIndex = (int) ((float) scrollbarY / (safeTextAreaY - scrollBarHeight) * lines.size());
+            return true;
         }
-        return true;
+        return false;
     }
 
     @Override
