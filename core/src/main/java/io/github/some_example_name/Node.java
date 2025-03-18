@@ -5,11 +5,9 @@ public class Node {
     private boolean bold;
     private boolean italic;
     private boolean underline;
-    private int charLength;
 
-    public Node(char data, int charLength, boolean bold, boolean italic, boolean underline) {
+    public Node(char data, boolean bold, boolean italic, boolean underline) {
         this.data = data;
-        this.charLength = charLength;
         this.bold = bold;
         this.italic = italic;
         this.underline = underline;
@@ -31,17 +29,11 @@ public class Node {
         return underline;
     }
 
-    public int getCharLength() {
-        return charLength;
-    }
 
     public void setChar(char data) {
         this.data = data;
     }
 
-    public void setCharLength(int charLength) {
-        this.charLength = charLength;
-    }
 
     public void setBold(boolean bold) {
         this.bold = bold;
