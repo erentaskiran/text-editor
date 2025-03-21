@@ -189,8 +189,30 @@ public class TextEditor implements InputProcessor {
             handleBackspace();
         } else if (Gdx.input.isKeyJustPressed(Input.Keys.ENTER)) {
             handleEnterKey();
+        } else if ( Gdx.input.isKeyPressed(Input.Keys.CONTROL_LEFT) && Gdx.input.isKeyJustPressed(Input.Keys.V)) {
+            handlePaste();
+        } else if (Gdx.input.isKeyPressed(Input.Keys.CONTROL_LEFT) && Gdx.input.isKeyJustPressed(Input.Keys.C)) {
+            handleCopy();
         } else {
             handleCharacterInput();
+        }
+    }
+
+    private void handlePaste() {
+        String clipboard = Gdx.app.getClipboard().getContents();
+        for (int i = 0; i < clipboard.length(); i++) {
+            gapBuffer.addChar(clipboard.charAt(i), bold, italic, underlined);
+        }
+        isAnyKeyPressed = true;
+    }
+
+    private void handleCopy() {
+        if (selectedStartIndex != -1 && selectedEndIndex != -1) {
+            StringBuilder sb = new StringBuilder();
+            for (int i = selectedStartIndex; i < selectedEndIndex; i++) {
+                sb.append(gapBuffer.getNode(i).getChar());
+            }
+            Gdx.app.getClipboard().setContents(sb.toString());
         }
     }
 
