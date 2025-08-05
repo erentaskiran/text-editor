@@ -1,4 +1,5 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 ## Gradle:
 .gradle/
 gradle-app.setting
@@ -165,6 +166,8 @@ Thumbs.db
 ## You should delete or comment out the next line if you have configuration in a different resource-config.json .
 **/resource-config.json
 =======
+=======
+>>>>>>> 1014711 (asd)
 .gradle
 build/
 !gradle/wrapper/gradle-wrapper.jar
@@ -206,5 +209,9 @@ bin/
 .vscode/
 
 ### Mac OS ###
+<<<<<<< HEAD
+.DS_Store
+>>>>>>> 1014711 (asd)
+=======
 .DS_Store
 >>>>>>> 1014711 (asd)
